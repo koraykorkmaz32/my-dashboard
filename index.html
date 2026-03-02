@@ -314,6 +314,84 @@
         </div>
     </div>
 </div>
+<script type="module">
+  // ... (Firebase init kısımları aynı) ...
 
+  // MODÜL AYARLARI
+  const defaultModules = {
+    weather: true,
+    pomodoro: true,
+    stocks: true,
+    finance: true,
+    tasks: true,
+    english: true,
+    tradingview: false // İsteğe bağlı ağır modül
+  };
+
+  // Ayarları Firebase'den çek ve uygula
+  onValue(ref(db, 'settings/activeModules'), (snap) => {
+    const activeModules = snap.val() || defaultModules;
+    Object.keys(activeModules).forEach(key => {
+        const el = document.getElementById(`mod-${key}`);
+        if (el) el.style.display = activeModules[key] ? 'block' : 'none';
+        
+        // Ayar panelindeki checkboxları güncelle
+        const chk = document.getElementById(`chk-${key}`);
+        if (chk) chk.checked = activeModules[key];
+    });
+  });
+
+  window.toggleModule = (key) => {
+    const chk = document.getElementById(`chk-${key}`);
+    update(ref(db, 'settings/activeModules'), { [key]: chk.checked });
+  };
+
+  // YENİ: İNGİLİZCE KELİME MODÜLÜ (Basit bir API veya statik liste)
+  const words = [
+    {en: "Volatility", tr: "Oynaklık (Borsa terimi)"},
+    {en: "Consistency", tr: "Tutarlılık"},
+    {en: "Trend Following", tr: "Trend Takibi"}
+  ];
+  const randomWord = words[Math.floor(Math.random() * words.length)];
+  document.getElementById("dailyWord").innerHTML = `<b>${randomWord.en}</b>: ${randomWord.tr}`;
+
+</script>
+
+<style>
+    /* Ayarlar Paneli Stili */
+    .settings-drawer {
+        position: fixed; top: 20px; right: 20px; z-index: 1000;
+    }
+    .settings-content {
+        display: none; background: var(--card); padding: 20px; border-radius: 15px;
+        border: 1px solid var(--accent); margin-top: 10px;
+    }
+    .settings-drawer:hover .settings-content { display: block; }
+    
+    /* Modül başlıklarına özel renkler */
+    #mod-stocks { border-left: 4px solid #facc15; }
+    #mod-english { border-left: 4px solid #a855f7; }
+</style>
+
+<div class="settings-drawer">
+    <button style="border-radius: 50%; width: 50px; height: 50px; padding: 0;">⚙️</button>
+    <div class="settings-content">
+        <h3>Modülleri Yönet</h3>
+        <label><input type="checkbox" id="chk-weather" onchange="toggleModule('weather')"> Hava Durumu</label><br>
+        <label><input type="checkbox" id="chk-pomodoro" onchange="toggleModule('pomodoro')"> Pomodoro</label><br>
+        <label><input type="checkbox" id="chk-stocks" onchange="toggleModule('stocks')"> Borsa Terminali</label><br>
+        <label><input type="checkbox" id="chk-english" onchange="toggleModule('english')"> İngilizce Pratik</label><br>
+        <label><input type="checkbox" id="chk-finance" onchange="toggleModule('finance')"> Nakit Akışı</label>
+    </div>
+</div>
+
+<div id="app">
+    <div class="panel" id="mod-weather"> </div>
+    <div class="panel" id="mod-pomodoro"> </div>
+    <div class="panel" id="mod-english">
+        <h2><i data-lucide="languages"></i> Günün Kelimesi</h2>
+        <div id="dailyWord" class="item-row"></div>
+    </div>
+    </div>
 </body>
 </html>
