@@ -3,225 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Kişisel Dashboard</title>
+    <title>Cloud Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getDatabase, ref, set, onValue, push, remove, update } 
+      from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+      // BURAYA KENDİ FIREBASE CONFIG BİLGİLERİNİ YAPIŞTIR!
+      const firebaseConfig = {
+      apiKey: "AIzaSyDnvY1frFDXMbMspy8a-z_Z41ofSz8wu2k",
+      authDomain: "korkmazdashboard.firebaseapp.com",
+      databaseURL: "https://korkmazdashboard-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "korkmazdashboard",
+      storageBucket: "korkmazdashboard.firebasestorage.app",
+      messagingSenderId: "119430771116",
+      appId: "1:119430771116:web:c7d25cfb8f320cbb940a09",
+      measurementId: "G-87JCTF09T7"
+    };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
+      // GLOBAL DEĞİŞKENLER
+      let currentYear = new Date().getFullYear();
+      let currentMonth = new Date().getMonth();
+      let selectedDay = null;
+      let selectedEmoji = "";
+      const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+
+      // --- TAKVİM FONKSİYONLARI ---
+      window.openMonth = (m) => {
+        currentMonth = m;
+        document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
+        const daysDiv = document.getElementById("days");
+        daysDiv.innerHTML = "";
+
+        const firstDay = new Date(currentYear, m, 1).getDay();
+        const startOffset = (firstDay === 0) ? 6 : firstDay - 1;
+        const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
+
+        for (let i = 0; i < startOffset; i++) {
+          const empty = document.createElement("div");
+          empty.className = "day empty";
+          daysDiv.appendChild(empty);
+        }
+
+        for (let i = 1; i <= daysInMonth; i++) {
+          const d = document.createElement("div");
+          d.className = "day";
+          d.innerText = i;
+          
+          const dbRef = ref(db, `calendar/${currentYear}/${m}/${i}`);
+          onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.emoji) {
+                let eSpan = d.querySelector(".day-emoji") || document.createElement("span");
+                eSpan.className = "day-emoji";
+                eSpan.innerText = data.emoji;
+                d.appendChild(eSpan);
+            }
+          });
+
+          d.onclick = () => selectDay(i, d);
+          daysDiv.appendChild(d);
+        }
+      };
+
+      window.selectDay = (d, element) => {
+        selectedDay = d;
+        document.querySelectorAll('.day').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        
+        const dbRef = ref(db, `calendar/${currentYear}/${currentMonth}/${d}`);
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            document.getElementById("note").value = data.text || "";
+            selectedEmoji = data.emoji || "";
+            document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]} Notu`;
+        }, { onlyOnce: true });
+      };
+
+      window.saveNote = () => {
+        if (!selectedDay) return;
+        set(ref(db, `calendar/${currentYear}/${currentMonth}/${selectedDay}`), {
+          text: document.getElementById("note").value,
+          emoji: selectedEmoji
+        });
+      };
+
+      window.setEmoji = (e) => { selectedEmoji = e; };
+
+      // --- GÖREV YÖNETİMİ ---
+      window.addTask = () => {
+        const input = document.getElementById("taskInput");
+        if (!input.value) return;
+        const newEntry = push(ref(db, 'tasks'));
+        set(newEntry, { text: input.value, done: false });
+        input.value = "";
+      };
+
+      window.toggleTask = (id, status) => {
+        update(ref(db, 'tasks/' + id), { done: !status });
+      };
+
+      window.deleteTask = (id) => {
+        remove(ref(db, 'tasks/' + id));
+      };
+
+      onValue(ref(db, 'tasks'), (snapshot) => {
+        const container = document.getElementById("tasks");
+        container.innerHTML = "";
+        const data = snapshot.val();
+        for (let id in data) {
+          container.innerHTML += `
+            <div class="item-row">
+                <span class="item-text ${data[id].done ? 'done' : ''}" onclick="toggleTask('${id}', ${data[id].done})">${data[id].text}</span>
+                <button class="del-btn" onclick="deleteTask('${id}')">×</button>
+            </div>`;
+        }
+      });
+
+      // --- FİNANS YÖNETİMİ ---
+      window.addFinance = () => {
+        const input = document.getElementById("financeInput");
+        if (!input.value) return;
+        push(ref(db, 'finances'), { text: input.value });
+        input.value = "";
+      };
+
+      window.deleteFinance = (id) => {
+        remove(ref(db, 'finances/' + id));
+      };
+
+      onValue(ref(db, 'finances'), (snapshot) => {
+        const container = document.getElementById("finances");
+        container.innerHTML = "";
+        const data = snapshot.val();
+        for (let id in data) {
+          container.innerHTML += `
+            <div class="item-row">
+                <span class="item-text">${data[id].text}</span>
+                <button class="del-btn" onclick="deleteFinance('${id}')">×</button>
+            </div>`;
+        }
+      });
+
+      // AYLARI OLUŞTUR
+      const monthsDiv = document.getElementById("months");
+      months.forEach((m, i) => {
+          const div = document.createElement("div");
+          div.className = "month" + (i === currentMonth ? " active" : "");
+          div.innerText = m;
+          div.onclick = () => {
+              document.querySelectorAll('.month').forEach(el => el.classList.remove('active'));
+              div.classList.add('active');
+              openMonth(i);
+          };
+          monthsDiv.appendChild(div);
+      });
+      openMonth(currentMonth);
+    </script>
+
     <style>
-        :root {
-            --bg: #0f172a;
-            --panel: #1e293b;
-            --accent: #38bdf8;
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-            --danger: #ef4444;
-            --success: #22c55e;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        #app {
-            display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr;
-            grid-template-rows: 1fr;
-            gap: 20px;
-            padding: 20px;
-            width: 100%;
-            max-width: 1400px;
-        }
-
-        /* Panel Stilleri */
-        .panel {
-            background: var(--panel);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            flex-direction: column;
-        }
-
-        h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 10px;
-        }
-
-        /* Takvim Alanı */
-        #months {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-
-        .month {
-            background: rgba(255,255,255,0.05);
-            padding: 8px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .month:hover, .month.active {
-            background: var(--accent);
-            color: var(--bg);
-            font-weight: bold;
-        }
-
-        .calendar-header {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            text-align: center;
-            font-weight: bold;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-
-        #days {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-        }
-
-        .day {
-            aspect-ratio: 1/1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.03);
-            cursor: pointer;
-            font-size: 0.9rem;
-            position: relative;
-            transition: background 0.2s;
-        }
-
-        .day:hover { background: rgba(255,255,255,0.1); }
+        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --text: #f8fafc; --text-muted: #94a3b8; --danger: #ef4444; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        #app { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 20px; max-width: 1400px; margin: auto; }
+        .panel { background: var(--panel); border-radius: 16px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.05); }
+        #months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .month { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center; cursor: pointer; font-size: 0.8rem; }
+        .month.active { background: var(--accent); color: var(--bg); font-weight: bold; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 10px; }
+        #days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .day { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255,255,255,0.03); cursor: pointer; font-size: 0.9rem; position: relative; }
         .day.selected { border: 2px solid var(--accent); }
-        .day.empty { background: transparent; cursor: default; }
-
-        .day-emoji {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            font-size: 0.7rem;
-        }
-
-        /* Not ve Emoji Alanı */
-        .note-area {
-            margin-top: 20px;
-            background: rgba(0,0,0,0.2);
-            padding: 15px;
-            border-radius: 12px;
-        }
-
-        textarea {
-            width: 100%;
-            height: 80px;
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.1);
-            color: white;
-            border-radius: 8px;
-            padding: 10px;
-            resize: none;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-        }
-
-        .emoji-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .emoji-btn {
-            background: rgba(255,255,255,0.05);
-            border: none;
-            cursor: pointer;
-            padding: 5px 8px;
-            border-radius: 6px;
-            transition: transform 0.2s;
-        }
-
-        .emoji-btn:hover { transform: scale(1.2); }
-        .emoji-btn.active { background: var(--accent); }
-
-        /* Liste Öğeleri (Görev & Finans) */
-        .list-container {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        input {
-            flex-grow: 1;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-        }
-
-        .item-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 8px;
-            margin-bottom: 8px;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .item-text { flex-grow: 1; cursor: pointer; }
+        .day-emoji { position: absolute; bottom: 2px; right: 2px; font-size: 0.7rem; }
+        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px; }
         .item-text.done { text-decoration: line-through; color: var(--text-muted); }
-
-        button {
-            background: var(--accent);
-            color: var(--bg);
-            border: none;
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .del-btn {
-            background: transparent;
-            color: var(--danger);
-            padding: 5px;
-            font-size: 1.2rem;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            #app { grid-template-columns: 1fr; }
-        }
+        input, textarea { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 8px; box-sizing: border-box; }
+        button { background: var(--accent); color: var(--bg); border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .del-btn { background: transparent; color: var(--danger); font-size: 1.2rem; }
+        .emoji-btn { background: rgba(255,255,255,0.05); border: none; cursor: pointer; padding: 5px; border-radius: 4px; }
+        @media (max-width: 1024px) { #app { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -230,205 +194,41 @@
     <div class="panel">
         <h2>📅 Takvim</h2>
         <div id="months"></div>
-        
-        <h3 id="monthTitle" style="text-align: center; margin: 10px 0;"></h3>
-        
-        <div class="calendar-header">
-            <span>PT</span><span>SA</span><span>ÇA</span><span>PE</span><span>CU</span><span>CT</span><span>PZ</span>
-        </div>
+        <h3 id="monthTitle" style="text-align: center;"></h3>
+        <div class="calendar-header"><span>PT</span><span>SA</span><span>ÇA</span><span>PE</span><span>CU</span><span>CT</span><span>PZ</span></div>
         <div id="days"></div>
-
-        <div class="note-area">
-            <h4 id="selectedDateText" style="margin: 0 0 10px 0; font-size: 0.9rem; color: var(--accent);">Gün Seçiniz</h4>
-            <div class="emoji-bar">
+        <div style="margin-top:20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px;">
+            <h4 id="selectedDateText" style="margin-top:0">Gün Seçin</h4>
+            <div style="margin-bottom:10px">
                 <button class="emoji-btn" onclick="setEmoji('✅')">✅</button>
                 <button class="emoji-btn" onclick="setEmoji('🚀')">🚀</button>
                 <button class="emoji-btn" onclick="setEmoji('💡')">💡</button>
                 <button class="emoji-btn" onclick="setEmoji('💰')">💰</button>
                 <button class="emoji-btn" onclick="setEmoji('⚠️')">⚠️</button>
-                <button class="emoji-btn" onclick="setEmoji('')" title="Temizle">✕</button>
             </div>
-            <textarea id="note" placeholder="Günlük notunuz..."></textarea>
-            <button onclick="saveNote()" style="width: 100%;">Kaydet</button>
+            <textarea id="note"></textarea>
+            <button onclick="saveNote()" style="width:100%; margin-top:10px">Buluta Kaydet</button>
         </div>
     </div>
 
     <div class="panel">
         <h2>✅ Görevler</h2>
-        <div class="input-group">
-            <input id="taskInput" placeholder="Yeni görev ekle...">
+        <div style="display:flex; gap:10px; margin-bottom:15px">
+            <input id="taskInput" placeholder="Yeni görev...">
             <button onclick="addTask()">+</button>
         </div>
-        <div id="tasks" class="list-container"></div>
+        <div id="tasks"></div>
     </div>
 
     <div class="panel">
-        <h2>💰 Finans Notları</h2>
-        <div class="input-group">
-            <input id="financeInput" placeholder="Harcama/Gelir notu...">
+        <h2>💰 Finans</h2>
+        <div style="display:flex; gap:10px; margin-bottom:15px">
+            <input id="financeInput" placeholder="Harcama...">
             <button onclick="addFinance()">+</button>
         </div>
-        <div id="finances" class="list-container"></div>
+        <div id="finances"></div>
     </div>
 </div>
-
-<script>
-    let currentYear = new Date().getFullYear();
-    let currentMonth = new Date().getMonth();
-    let selectedDay = null;
-    let selectedEmoji = "";
-
-    const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
-
-    // Başlatma
-    function init() {
-        renderMonths();
-        openMonth(currentMonth);
-        renderTasks();
-        renderFinances();
-    }
-
-    // Aylar Listesi
-    function renderMonths() {
-        const monthsDiv = document.getElementById("months");
-        months.forEach((m, i) => {
-            const div = document.createElement("div");
-            div.className = "month" + (i === currentMonth ? " active" : "");
-            div.innerText = m;
-            div.onclick = () => {
-                document.querySelectorAll('.month').forEach(el => el.classList.remove('active'));
-                div.classList.add('active');
-                openMonth(i);
-            };
-            monthsDiv.appendChild(div);
-        });
-    }
-
-    // Ayı Görüntüle (Pazartesi Başlangıçlı)
-    function openMonth(m) {
-        currentMonth = m;
-        document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
-        const daysDiv = document.getElementById("days");
-        daysDiv.innerHTML = "";
-
-        const firstDayOfMonth = new Date(currentYear, m, 1).getDay();
-        // JS'de 0 Pazar'dır. Pazartesi'yi 0 yapmak için:
-        const startOffset = (firstDayOfMonth === 0) ? 6 : firstDayOfMonth - 1;
-        const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
-
-        // Boşluklar
-        for (let i = 0; i < startOffset; i++) {
-            const empty = document.createElement("div");
-            empty.className = "day empty";
-            daysDiv.appendChild(empty);
-        }
-
-        // Günler
-        for (let i = 1; i <= daysInMonth; i++) {
-            const d = document.createElement("div");
-            d.className = "day";
-            d.innerText = i;
-            
-            const key = `note-${currentYear}-${m}-${i}`;
-            const savedData = JSON.parse(localStorage.getItem(key) || "{}");
-            
-            if (savedData.emoji) {
-                const eSpan = document.createElement("span");
-                eSpan.className = "day-emoji";
-                eSpan.innerText = savedData.emoji;
-                d.appendChild(eSpan);
-            }
-
-            d.onclick = () => selectDay(i, d);
-            daysDiv.appendChild(d);
-        }
-    }
-
-    function selectDay(d, element) {
-        selectedDay = d;
-        document.querySelectorAll('.day').forEach(el => el.classList.remove('selected'));
-        element.classList.add('selected');
-        
-        const key = `note-${currentYear}-${currentMonth}-${d}`;
-        const savedData = JSON.parse(localStorage.getItem(key) || "{}");
-        
-        document.getElementById("note").value = savedData.text || "";
-        selectedEmoji = savedData.emoji || "";
-        document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]} Notu`;
-    }
-
-    function setEmoji(e) {
-        selectedEmoji = e;
-        // Basit görsel geri bildirim
-        document.querySelectorAll('.emoji-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.innerText === e);
-        });
-    }
-
-    function saveNote() {
-        if (!selectedDay) return alert("Lütfen bir gün seçin!");
-        const key = `note-${currentYear}-${currentMonth}-${selectedDay}`;
-        const data = {
-            text: document.getElementById("note").value,
-            emoji: selectedEmoji
-        };
-        localStorage.setItem(key, JSON.stringify(data));
-        openMonth(currentMonth); // Takvimi yenile (emoji görünmesi için)
-    }
-
-    // GÖREV YÖNETİMİ
-    let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-    function renderTasks() {
-        const container = document.getElementById("tasks");
-        container.innerHTML = "";
-        tasks.forEach((t, i) => {
-            container.innerHTML += `
-                <div class="item-row">
-                    <span class="item-text ${t.done ? 'done' : ''}" onclick="toggleTask(${i})">${t.text}</span>
-                    <button class="del-btn" onclick="deleteTask(${i})">×</button>
-                </div>`;
-        });
-    }
-
-    function addTask() {
-        const input = document.getElementById("taskInput");
-        if (!input.value) return;
-        tasks.push({ text: input.value, done: false });
-        input.value = "";
-        saveAndRenderTasks();
-    }
-
-    function toggleTask(i) { tasks[i].done = !tasks[i].done; saveAndRenderTasks(); }
-    function deleteTask(i) { tasks.splice(i, 1); saveAndRenderTasks(); }
-    function saveAndRenderTasks() { localStorage.setItem("tasks", JSON.stringify(tasks)); renderTasks(); }
-
-    // FİNANS YÖNETİMİ (Yeni Liste Yapısı)
-    let finances = JSON.parse(localStorage.getItem("finances") || "[]");
-    function renderFinances() {
-        const container = document.getElementById("finances");
-        container.innerHTML = "";
-        finances.forEach((f, i) => {
-            container.innerHTML += `
-                <div class="item-row">
-                    <span class="item-text">${f.text}</span>
-                    <button class="del-btn" onclick="deleteFinance(${i})">×</button>
-                </div>`;
-        });
-    }
-
-    function addFinance() {
-        const input = document.getElementById("financeInput");
-        if (!input.value) return;
-        finances.push({ text: input.value });
-        input.value = "";
-        saveAndRenderFinances();
-    }
-
-    function deleteFinance(i) { finances.splice(i, 1); saveAndRenderFinances(); }
-    function saveAndRenderFinances() { localStorage.setItem("finances", JSON.stringify(finances)); renderFinances(); }
-
-    init();
-</script>
 
 </body>
 </html>
