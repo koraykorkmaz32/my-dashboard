@@ -1,36 +1,340 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: #111;
-      color: #0f0;
-      padding: 20px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Kişisel Dashboard</title>
+
+<style>
+
+body{
+  margin:0;
+  font-family: Arial;
+  background:#0f172a;
+  color:#e5e7eb;
+}
+
+#app{
+  display:grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  height:100vh;
+  gap:10px;
+  padding:10px;
+}
+
+/* Kutular */
+
+.panel{
+  background:#020617;
+  border-radius:10px;
+  padding:10px;
+  overflow:auto;
+}
+
+/* Başlık */
+
+h2{
+  margin:5px 0;
+  border-bottom:1px solid #1e293b;
+  padding-bottom:5px;
+}
+
+/* Takvim */
+
+#months{
+  display:grid;
+  grid-template-columns: repeat(4,1fr);
+  gap:5px;
+}
+
+.month{
+  background:#020617;
+  padding:10px;
+  text-align:center;
+  border:1px solid #1e293b;
+  cursor:pointer;
+}
+
+.month:hover{
+  background:#1e293b;
+}
+
+#days{
+  display:grid;
+  grid-template-columns: repeat(7,1fr);
+  gap:5px;
+}
+
+.day{
+  border:1px solid #1e293b;
+  height:60px;
+  text-align:center;
+  cursor:pointer;
+  position:relative;
+}
+
+.dot{
+  width:6px;
+  height:6px;
+  background:#22c55e;
+  border-radius:50%;
+  position:absolute;
+  bottom:5px;
+  right:5px;
+}
+
+/* Not */
+
+textarea{
+  width:100%;
+  height:100px;
+  background:#020617;
+  color:white;
+  border:1px solid #1e293b;
+}
+
+/* Görev */
+
+#taskInput{
+  width:80%;
+}
+
+.task{
+  display:flex;
+  justify-content:space-between;
+  margin:5px 0;
+}
+
+.done{
+  text-decoration:line-through;
+  color:#64748b;
+}
+
+/* Buton */
+
+button{
+  background:#2563eb;
+  color:white;
+  border:none;
+  padding:5px 10px;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#1d4ed8;
+}
+
+</style>
 </head>
+
 <body>
 
-<h1>📊 Kişisel Panel</h1>
+<div id="app">
 
-<p>Online dashboard çalışıyor 🚀</p>
+<!-- TAKVİM -->
+<div class="panel">
 
-<div>
-  <h2>📝 Notlar</h2>
-  <textarea rows="5" cols="40"></textarea>
+<h2>📅 Takvim</h2>
+
+<div id="months"></div>
+
+<h3 id="monthTitle"></h3>
+
+<div id="days"></div>
+
+<h3>Not</h3>
+<textarea id="note"></textarea>
+<button onclick="saveNote()">Kaydet</button>
+
 </div>
 
-<div>
-  <h2>✅ Görevler</h2>
-  <ul>
-    <li>Dashboard kur</li>
-    <li>Online yap</li>
-    <li>Geliştir</li>
-  </ul>
+<!-- GÖREV -->
+<div class="panel">
+
+<h2>✅ Görevler</h2>
+
+<input id="taskInput" placeholder="Yeni görev">
+<button onclick="addTask()">+</button>
+
+<div id="tasks"></div>
+
 </div>
+
+<!-- FİNANS -->
+<div class="panel">
+
+<h2>💰 Finans Notları</h2>
+
+<textarea id="finance"></textarea>
+<button onclick="saveFinance()">Kaydet</button>
+
+</div>
+
+</div>
+
+
+<script>
+
+// Tarih
+
+let currentYear = new Date().getFullYear()
+let currentMonth = null
+let selectedDay = null
+
+const months = [
+"Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
+"Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"
+]
+
+// AY GÖSTER
+
+const monthsDiv = document.getElementById("months")
+
+months.forEach((m,i)=>{
+  const div=document.createElement("div")
+  div.className="month"
+  div.innerText=m
+  div.onclick=()=>openMonth(i)
+  monthsDiv.appendChild(div)
+})
+
+// AY AÇ
+
+function openMonth(m){
+
+  currentMonth=m
+  document.getElementById("monthTitle").innerText=
+  months[m]+" "+currentYear
+
+  const daysDiv=document.getElementById("days")
+  daysDiv.innerHTML=""
+
+  const days=new Date(currentYear,m+1,0).getDate()
+
+  for(let i=1;i<=days;i++){
+
+    const d=document.createElement("div")
+    d.className="day"
+    d.innerText=i
+
+    d.onclick=()=>selectDay(i)
+
+    const key=`${currentYear}-${m}-${i}`
+
+    if(localStorage.getItem(key)){
+      const dot=document.createElement("div")
+      dot.className="dot"
+      d.appendChild(dot)
+    }
+
+    daysDiv.appendChild(d)
+  }
+}
+
+// GÜN SEÇ
+
+function selectDay(d){
+
+  selectedDay=d
+
+  const key=`${currentYear}-${currentMonth}-${d}`
+
+  document.getElementById("note").value=
+    localStorage.getItem(key)||""
+}
+
+// NOT KAYDET
+
+function saveNote(){
+
+  if(selectedDay==null) return
+
+  const key=`${currentYear}-${currentMonth}-${selectedDay}`
+
+  localStorage.setItem(
+    key,
+    document.getElementById("note").value
+  )
+
+  openMonth(currentMonth)
+}
+
+// GÖREVLER
+
+let tasks=JSON.parse(localStorage.getItem("tasks")||"[]")
+
+function renderTasks(){
+
+  const div=document.getElementById("tasks")
+  div.innerHTML=""
+
+  tasks.forEach((t,i)=>{
+
+    const row=document.createElement("div")
+    row.className="task"
+
+    const span=document.createElement("span")
+    span.innerText=t.text
+    if(t.done) span.classList.add("done")
+
+    span.onclick=()=>{
+      t.done=!t.done
+      saveTasks()
+    }
+
+    const del=document.createElement("button")
+    del.innerText="X"
+    del.onclick=()=>{
+      tasks.splice(i,1)
+      saveTasks()
+    }
+
+    row.appendChild(span)
+    row.appendChild(del)
+
+    div.appendChild(row)
+  })
+}
+
+function addTask(){
+
+  const input=document.getElementById("taskInput")
+
+  if(input.value=="") return
+
+  tasks.push({
+    text:input.value,
+    done:false
+  })
+
+  input.value=""
+
+  saveTasks()
+}
+
+function saveTasks(){
+
+  localStorage.setItem("tasks",JSON.stringify(tasks))
+  renderTasks()
+}
+
+// FİNANS
+
+function saveFinance(){
+
+  localStorage.setItem(
+    "finance",
+    document.getElementById("finance").value
+  )
+}
+
+document.getElementById("finance").value=
+  localStorage.getItem("finance")||""
+
+// BAŞLAT
+
+renderTasks()
+
+</script>
 
 </body>
 </html>
