@@ -2,20 +2,20 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Kişisel Dashboard</title>
+<title>Dashboard</title>
 
 <style>
 
 body{
   margin:0;
-  font-family: Arial;
+  font-family:Arial;
   background:#0f172a;
   color:#e5e7eb;
 }
 
 #app{
   display:grid;
-  grid-template-columns: 2fr 1fr 2fr;
+  grid-template-columns:2fr 1fr 2fr;
   height:100vh;
   gap:10px;
   padding:10px;
@@ -23,7 +23,7 @@ body{
 
 .panel{
   background:#020617;
-  border-radius:10px;
+  border-radius:8px;
   padding:10px;
   overflow:auto;
 }
@@ -32,61 +32,56 @@ h2{
   border-bottom:1px solid #1e293b;
 }
 
-/* TAKVİM */
+/* Takvim */
 
 #months{
   display:grid;
-  grid-template-columns: repeat(4,1fr);
+  grid-template-columns:repeat(4,1fr);
   gap:5px;
 }
 
 .month{
   border:1px solid #1e293b;
+  padding:6px;
   text-align:center;
-  padding:8px;
   cursor:pointer;
 }
 
 .month:hover{background:#1e293b}
 
-#weekdays{
+#weekdays,#days{
   display:grid;
   grid-template-columns:repeat(7,1fr);
   text-align:center;
-  font-size:12px;
 }
 
-#days{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:5px;
-}
+#days{gap:4px}
 
 .day{
   border:1px solid #1e293b;
-  height:60px;
-  position:relative;
+  height:50px;
   cursor:pointer;
-  padding-top:5px;
+  position:relative;
+  font-size:13px;
 }
 
 .icon{
   position:absolute;
-  bottom:4px;
-  right:4px;
-  font-size:14px;
+  bottom:2px;
+  right:2px;
 }
 
-/* TEXT */
+/* Input */
 
-textarea{
+textarea,input{
   width:100%;
   background:#020617;
   color:white;
   border:1px solid #1e293b;
+  margin:4px 0;
 }
 
-/* BUTTON */
+/* Button */
 
 button{
   background:#2563eb;
@@ -98,12 +93,12 @@ button{
 
 button:hover{background:#1d4ed8}
 
-/* TASK */
+/* Task */
 
 .task{
   display:flex;
   justify-content:space-between;
-  margin:5px 0;
+  margin:4px 0;
 }
 
 .done{
@@ -111,7 +106,7 @@ button:hover{background:#1d4ed8}
   color:#64748b;
 }
 
-/* FINANCE */
+/* Finance */
 
 table{
   width:100%;
@@ -120,21 +115,13 @@ table{
 
 td,th{
   border:1px solid #1e293b;
-  padding:5px;
-  font-size:13px;
-  text-align:center;
+  padding:4px;
+  font-size:12px;
 }
 
 .finance-done{
   text-decoration:line-through;
   color:#64748b;
-}
-
-select{
-  width:100%;
-  background:#020617;
-  color:white;
-  border:1px solid #1e293b;
 }
 
 </style>
@@ -160,52 +147,43 @@ select{
 
 <div id="days"></div>
 
-<h3>Not</h3>
-
 <select id="iconSelect">
-  <option value="📌">📌 Genel</option>
-  <option value="💼">💼 İş</option>
-  <option value="💰">💰 Para</option>
-  <option value="❤️">❤️ Özel</option>
-  <option value="⚠️">⚠️ Acil</option>
+<option>📌</option>
+<option>💼</option>
+<option>💰</option>
+<option>❤️</option>
+<option>⚠️</option>
 </select>
 
-<textarea id="note" rows="4"></textarea>
+<textarea id="note" rows="3"></textarea>
 
-<button onclick="saveNote()">Kaydet</button>
+<button id="saveNoteBtn">Kaydet</button>
 
 </div>
 
-
-<!-- GÖREV -->
+<!-- TASK -->
 <div class="panel">
 
 <h2>✅ Görevler</h2>
 
-<input id="taskInput">
-<button onclick="addTask()">+</button>
+<input id="taskInput" placeholder="Yeni görev">
+<button id="addTaskBtn">+</button>
 
 <div id="tasks"></div>
 
 </div>
 
-
-<!-- FİNANS -->
+<!-- FINANCE -->
 <div class="panel">
 
 <h2>💰 Finans</h2>
 
-<button onclick="addFinanceRow()">+ Satır</button>
+<button id="addFinanceBtn">+ Satır</button>
 
 <table>
 <thead>
 <tr>
-<th>Sütun1</th>
-<th>Sütun2</th>
-<th>Sütun3</th>
-<th>Sütun4</th>
-<th>✔</th>
-<th>❌</th>
+<th>1</th><th>2</th><th>3</th><th>4</th><th>✔</th><th>❌</th>
 </tr>
 </thead>
 
@@ -220,11 +198,15 @@ select{
 
 <script>
 
-// ===== TAKVİM =====
+// ===== GLOBAL =====
 
-let year=new Date().getFullYear()
-let month=null
-let day=null
+const year=new Date().getFullYear()
+
+let currentMonth=null
+let currentDay=null
+
+
+// ===== TAKVİM =====
 
 const months=[
 "Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
@@ -232,13 +214,18 @@ const months=[
 ]
 
 const monthsDiv=document.getElementById("months")
+const daysDiv=document.getElementById("days")
+const monthTitle=document.getElementById("monthTitle")
+const note=document.getElementById("note")
+const iconSelect=document.getElementById("iconSelect")
 
 months.forEach((m,i)=>{
 
   const d=document.createElement("div")
   d.className="month"
   d.innerText=m
-  d.onclick=()=>openMonth(i)
+
+  d.addEventListener("click",()=>openMonth(i))
 
   monthsDiv.appendChild(d)
 })
@@ -246,11 +233,12 @@ months.forEach((m,i)=>{
 
 function openMonth(m){
 
-  month=m
+  currentMonth=m
+  currentDay=null
 
   monthTitle.innerText=months[m]+" "+year
 
-  days.innerHTML=""
+  daysDiv.innerHTML=""
 
   const first=new Date(year,m,1).getDay()
   const start=(first+6)%7
@@ -258,19 +246,18 @@ function openMonth(m){
   const total=new Date(year,m+1,0).getDate()
 
   for(let i=0;i<start;i++){
-    days.appendChild(document.createElement("div"))
+    daysDiv.appendChild(document.createElement("div"))
   }
 
-  for(let i=1;i<=total;i++){
+  for(let d=1;d<=total;d++){
 
-    const d=document.createElement("div")
-    d.className="day"
-    d.innerText=i
+    const el=document.createElement("div")
+    el.className="day"
+    el.innerText=d
 
-    d.onclick=()=>selectDay(i)
+    el.addEventListener("click",()=>selectDay(d))
 
-    const key=`${year}-${m}-${i}`
-
+    const key=`${year}-${m}-${d}`
     const saved=localStorage.getItem(key)
 
     if(saved){
@@ -281,19 +268,19 @@ function openMonth(m){
       icon.className="icon"
       icon.innerText=data.icon
 
-      d.appendChild(icon)
+      el.appendChild(icon)
     }
 
-    days.appendChild(d)
+    daysDiv.appendChild(el)
   }
 }
 
 
 function selectDay(d){
 
-  day=d
+  currentDay=d
 
-  const key=`${year}-${month}-${d}`
+  const key=`${year}-${currentMonth}-${d}`
 
   const saved=localStorage.getItem(key)
 
@@ -312,11 +299,12 @@ function selectDay(d){
 }
 
 
-function saveNote(){
+document.getElementById("saveNoteBtn")
+.addEventListener("click",()=>{
 
-  if(day==null) return
+  if(currentDay==null) return
 
-  const key=`${year}-${month}-${day}`
+  const key=`${year}-${currentMonth}-${currentDay}`
 
   const data={
     text:note.value,
@@ -325,13 +313,17 @@ function saveNote(){
 
   localStorage.setItem(key,JSON.stringify(data))
 
-  openMonth(month)
-}
+  openMonth(currentMonth)
+})
 
 
 // ===== TASK =====
 
+const taskInput=document.getElementById("taskInput")
+const tasksDiv=document.getElementById("tasks")
+
 let tasks=JSON.parse(localStorage.getItem("tasks")||"[]")
+
 
 function renderTasks(){
 
@@ -347,18 +339,20 @@ function renderTasks(){
 
     if(t.done) span.classList.add("done")
 
-    span.onclick=()=>{
+    span.addEventListener("click",()=>{
+
       t.done=!t.done
       saveTasks()
-    }
+    })
 
     const del=document.createElement("button")
     del.innerText="X"
 
-    del.onclick=()=>{
+    del.addEventListener("click",()=>{
+
       tasks.splice(i,1)
       saveTasks()
-    }
+    })
 
     row.appendChild(span)
     row.appendChild(del)
@@ -368,7 +362,8 @@ function renderTasks(){
 }
 
 
-function addTask(){
+document.getElementById("addTaskBtn")
+.addEventListener("click",()=>{
 
   if(taskInput.value=="") return
 
@@ -380,7 +375,7 @@ function addTask(){
   taskInput.value=""
 
   saveTasks()
-}
+})
 
 
 function saveTasks(){
@@ -391,6 +386,8 @@ function saveTasks(){
 
 
 // ===== FINANCE =====
+
+const financeBody=document.getElementById("financeBody")
 
 let finance=JSON.parse(localStorage.getItem("finance")||"[]")
 
@@ -411,14 +408,14 @@ function renderFinance(){
 
       if(r.done) td.classList.add("finance-done")
 
-      td.oninput=()=>{
+      td.addEventListener("input",()=>{
 
         r.data=[...tr.children]
         .slice(0,4)
         .map(x=>x.innerText)
 
         saveFinance()
-      }
+      })
 
       tr.appendChild(td)
     })
@@ -426,18 +423,22 @@ function renderFinance(){
 
     const ok=document.createElement("td")
     ok.innerText="✔"
-    ok.onclick=()=>{
+
+    ok.addEventListener("click",()=>{
+
       r.done=!r.done
       saveFinance()
-    }
+    })
 
 
     const del=document.createElement("td")
     del.innerText="X"
-    del.onclick=()=>{
+
+    del.addEventListener("click",()=>{
+
       finance.splice(i,1)
       saveFinance()
-    }
+    })
 
     tr.appendChild(ok)
     tr.appendChild(del)
@@ -447,7 +448,8 @@ function renderFinance(){
 }
 
 
-function addFinanceRow(){
+document.getElementById("addFinanceBtn")
+.addEventListener("click",()=>{
 
   finance.push({
     data:["","","",""],
@@ -455,7 +457,7 @@ function addFinanceRow(){
   })
 
   saveFinance()
-}
+})
 
 
 function saveFinance(){
