@@ -166,7 +166,7 @@ td,th{
 
 <h2>✅ Görevler</h2>
 
-<input id="taskInput" placeholder="Yeni görev">
+<input id="taskInput">
 <button id="addTaskBtn">+</button>
 
 <div id="tasks"></div>
@@ -198,7 +198,7 @@ td,th{
 
 <script>
 
-// ===== GLOBAL =====
+// ================= GLOBAL =================
 
 const year=new Date().getFullYear()
 
@@ -206,7 +206,7 @@ let currentMonth=null
 let currentDay=null
 
 
-// ===== TAKVİM =====
+// ================= TAKVİM =================
 
 const months=[
 "Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
@@ -225,10 +225,23 @@ months.forEach((m,i)=>{
   d.className="month"
   d.innerText=m
 
-  d.addEventListener("click",()=>openMonth(i))
+  d.onclick=()=>openMonth(i)
 
   monthsDiv.appendChild(d)
 })
+
+
+// ISO WEEK START (PZT)
+function getMondayStart(year,month){
+
+  let d=new Date(year,month,1)
+
+  let day=d.getDay()
+
+  if(day===0) day=7
+
+  return day-1
+}
 
 
 function openMonth(m){
@@ -240,8 +253,7 @@ function openMonth(m){
 
   daysDiv.innerHTML=""
 
-  const first=new Date(year,m,1).getDay()
-  const start=(first+6)%7
+  const start=getMondayStart(year,m)
 
   const total=new Date(year,m+1,0).getDate()
 
@@ -255,7 +267,7 @@ function openMonth(m){
     el.className="day"
     el.innerText=d
 
-    el.addEventListener("click",()=>selectDay(d))
+    el.onclick=()=>selectDay(d)
 
     const key=`${year}-${m}-${d}`
     const saved=localStorage.getItem(key)
@@ -299,8 +311,7 @@ function selectDay(d){
 }
 
 
-document.getElementById("saveNoteBtn")
-.addEventListener("click",()=>{
+saveNoteBtn.onclick=()=>{
 
   if(currentDay==null) return
 
@@ -314,10 +325,10 @@ document.getElementById("saveNoteBtn")
   localStorage.setItem(key,JSON.stringify(data))
 
   openMonth(currentMonth)
-})
+}
 
 
-// ===== TASK =====
+// ================= TASK =================
 
 const taskInput=document.getElementById("taskInput")
 const tasksDiv=document.getElementById("tasks")
@@ -339,20 +350,20 @@ function renderTasks(){
 
     if(t.done) span.classList.add("done")
 
-    span.addEventListener("click",()=>{
+    span.onclick=()=>{
 
       t.done=!t.done
       saveTasks()
-    })
+    }
 
     const del=document.createElement("button")
     del.innerText="X"
 
-    del.addEventListener("click",()=>{
+    del.onclick=()=>{
 
       tasks.splice(i,1)
       saveTasks()
-    })
+    }
 
     row.appendChild(span)
     row.appendChild(del)
@@ -362,8 +373,7 @@ function renderTasks(){
 }
 
 
-document.getElementById("addTaskBtn")
-.addEventListener("click",()=>{
+addTaskBtn.onclick=()=>{
 
   if(taskInput.value=="") return
 
@@ -375,7 +385,7 @@ document.getElementById("addTaskBtn")
   taskInput.value=""
 
   saveTasks()
-})
+}
 
 
 function saveTasks(){
@@ -385,7 +395,7 @@ function saveTasks(){
 }
 
 
-// ===== FINANCE =====
+// ================= FINANCE =================
 
 const financeBody=document.getElementById("financeBody")
 
@@ -400,45 +410,42 @@ function renderFinance(){
 
     const tr=document.createElement("tr")
 
-    r.data.forEach(v=>{
+    for(let c=0;c<4;c++){
 
       const td=document.createElement("td")
       td.contentEditable=true
-      td.innerText=v
+      td.innerText=r.data[c]||""
+
+      td.onblur=()=>{
+
+        r.data[c]=td.innerText
+        saveFinance(false)
+      }
 
       if(r.done) td.classList.add("finance-done")
 
-      td.addEventListener("input",()=>{
-
-        r.data=[...tr.children]
-        .slice(0,4)
-        .map(x=>x.innerText)
-
-        saveFinance()
-      })
-
       tr.appendChild(td)
-    })
+    }
 
 
     const ok=document.createElement("td")
     ok.innerText="✔"
 
-    ok.addEventListener("click",()=>{
+    ok.onclick=()=>{
 
       r.done=!r.done
       saveFinance()
-    })
+    }
 
 
     const del=document.createElement("td")
     del.innerText="X"
 
-    del.addEventListener("click",()=>{
+    del.onclick=()=>{
 
       finance.splice(i,1)
       saveFinance()
-    })
+    }
 
     tr.appendChild(ok)
     tr.appendChild(del)
@@ -448,8 +455,7 @@ function renderFinance(){
 }
 
 
-document.getElementById("addFinanceBtn")
-.addEventListener("click",()=>{
+addFinanceBtn.onclick=()=>{
 
   finance.push({
     data:["","","",""],
@@ -457,17 +463,18 @@ document.getElementById("addFinanceBtn")
   })
 
   saveFinance()
-})
-
-
-function saveFinance(){
-
-  localStorage.setItem("finance",JSON.stringify(finance))
-  renderFinance()
 }
 
 
-// ===== START =====
+function saveFinance(rerender=true){
+
+  localStorage.setItem("finance",JSON.stringify(finance))
+
+  if(rerender) renderFinance()
+}
+
+
+// ================= START =================
 
 renderTasks()
 renderFinance()
