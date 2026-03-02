@@ -29,12 +29,10 @@ body{
 }
 
 h2{
-  margin:5px 0;
   border-bottom:1px solid #1e293b;
-  padding-bottom:5px;
 }
 
-/* Takvim */
+/* TAKVİM */
 
 #months{
   display:grid;
@@ -43,75 +41,64 @@ h2{
 }
 
 .month{
-  background:#020617;
-  padding:10px;
-  text-align:center;
   border:1px solid #1e293b;
+  text-align:center;
+  padding:8px;
   cursor:pointer;
 }
 
-.month:hover{
-  background:#1e293b;
-}
+.month:hover{background:#1e293b}
 
 #weekdays{
   display:grid;
-  grid-template-columns: repeat(7,1fr);
+  grid-template-columns:repeat(7,1fr);
   text-align:center;
   font-size:12px;
-  margin-top:5px;
 }
 
 #days{
   display:grid;
-  grid-template-columns: repeat(7,1fr);
+  grid-template-columns:repeat(7,1fr);
   gap:5px;
 }
 
 .day{
   border:1px solid #1e293b;
   height:60px;
-  text-align:center;
-  cursor:pointer;
   position:relative;
+  cursor:pointer;
   padding-top:5px;
 }
 
-.dot{
-  width:6px;
-  height:6px;
-  background:#22c55e;
-  border-radius:50%;
+.icon{
   position:absolute;
-  bottom:5px;
-  right:5px;
+  bottom:4px;
+  right:4px;
+  font-size:14px;
 }
 
-/* Text */
+/* TEXT */
 
 textarea{
   width:100%;
   background:#020617;
   color:white;
   border:1px solid #1e293b;
-  margin:5px 0;
 }
 
-/* Buton */
+/* BUTTON */
 
 button{
   background:#2563eb;
-  color:white;
   border:none;
+  color:white;
   padding:4px 8px;
   cursor:pointer;
 }
 
-button:hover{
-  background:#1d4ed8;
-}
+button:hover{background:#1d4ed8}
 
-/* Görev */
+/* TASK */
 
 .task{
   display:flex;
@@ -124,24 +111,30 @@ button:hover{
   color:#64748b;
 }
 
-/* Finans Tablo */
+/* FINANCE */
 
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:5px;
 }
 
-th,td{
+td,th{
   border:1px solid #1e293b;
   padding:5px;
-  text-align:center;
   font-size:13px;
+  text-align:center;
 }
 
 .finance-done{
   text-decoration:line-through;
   color:#64748b;
+}
+
+select{
+  width:100%;
+  background:#020617;
+  color:white;
+  border:1px solid #1e293b;
 }
 
 </style>
@@ -161,13 +154,21 @@ th,td{
 <h3 id="monthTitle"></h3>
 
 <div id="weekdays">
-  <div>Pzt</div><div>Sal</div><div>Çar</div>
-  <div>Per</div><div>Cum</div><div>Cts</div><div>Paz</div>
+<div>Pzt</div><div>Sal</div><div>Çar</div>
+<div>Per</div><div>Cum</div><div>Cts</div><div>Paz</div>
 </div>
 
 <div id="days"></div>
 
 <h3>Not</h3>
+
+<select id="iconSelect">
+  <option value="📌">📌 Genel</option>
+  <option value="💼">💼 İş</option>
+  <option value="💰">💰 Para</option>
+  <option value="❤️">❤️ Özel</option>
+  <option value="⚠️">⚠️ Acil</option>
+</select>
 
 <textarea id="note" rows="4"></textarea>
 
@@ -175,17 +176,19 @@ th,td{
 
 </div>
 
+
 <!-- GÖREV -->
 <div class="panel">
 
 <h2>✅ Görevler</h2>
 
-<input id="taskInput" placeholder="Yeni görev">
+<input id="taskInput">
 <button onclick="addTask()">+</button>
 
 <div id="tasks"></div>
 
 </div>
+
 
 <!-- FİNANS -->
 <div class="panel">
@@ -197,10 +200,10 @@ th,td{
 <table>
 <thead>
 <tr>
-<th>Sütun 1</th>
-<th>Sütun 2</th>
-<th>Sütun 3</th>
-<th>Sütun 4</th>
+<th>Sütun1</th>
+<th>Sütun2</th>
+<th>Sütun3</th>
+<th>Sütun4</th>
 <th>✔</th>
 <th>❌</th>
 </tr>
@@ -217,7 +220,7 @@ th,td{
 
 <script>
 
-// ====== TAKVİM ======
+// ===== TAKVİM =====
 
 let year=new Date().getFullYear()
 let month=null
@@ -240,23 +243,22 @@ months.forEach((m,i)=>{
   monthsDiv.appendChild(d)
 })
 
+
 function openMonth(m){
 
   month=m
 
-  document.getElementById("monthTitle").innerText=
-  months[m]+" "+year
+  monthTitle.innerText=months[m]+" "+year
 
-  const daysDiv=document.getElementById("days")
-  daysDiv.innerHTML=""
+  days.innerHTML=""
 
   const first=new Date(year,m,1).getDay()
-  const start=(first+6)%7 // Pazartesi ayarı
+  const start=(first+6)%7
 
   const total=new Date(year,m+1,0).getDate()
 
   for(let i=0;i<start;i++){
-    daysDiv.appendChild(document.createElement("div"))
+    days.appendChild(document.createElement("div"))
   }
 
   for(let i=1;i<=total;i++){
@@ -269,15 +271,23 @@ function openMonth(m){
 
     const key=`${year}-${m}-${i}`
 
-    if(localStorage.getItem(key)){
-      const dot=document.createElement("div")
-      dot.className="dot"
-      d.appendChild(dot)
+    const saved=localStorage.getItem(key)
+
+    if(saved){
+
+      const data=JSON.parse(saved)
+
+      const icon=document.createElement("div")
+      icon.className="icon"
+      icon.innerText=data.icon
+
+      d.appendChild(icon)
     }
 
-    daysDiv.appendChild(d)
+    days.appendChild(d)
   }
 }
+
 
 function selectDay(d){
 
@@ -285,8 +295,22 @@ function selectDay(d){
 
   const key=`${year}-${month}-${d}`
 
-  note.value=localStorage.getItem(key)||""
+  const saved=localStorage.getItem(key)
+
+  if(saved){
+
+    const data=JSON.parse(saved)
+
+    note.value=data.text
+    iconSelect.value=data.icon
+
+  }else{
+
+    note.value=""
+    iconSelect.value="📌"
+  }
 }
+
 
 function saveNote(){
 
@@ -294,20 +318,24 @@ function saveNote(){
 
   const key=`${year}-${month}-${day}`
 
-  localStorage.setItem(key,note.value)
+  const data={
+    text:note.value,
+    icon:iconSelect.value
+  }
+
+  localStorage.setItem(key,JSON.stringify(data))
 
   openMonth(month)
 }
 
 
-// ====== GÖREV ======
+// ===== TASK =====
 
 let tasks=JSON.parse(localStorage.getItem("tasks")||"[]")
 
 function renderTasks(){
 
-  const div=document.getElementById("tasks")
-  div.innerHTML=""
+  tasksDiv.innerHTML=""
 
   tasks.forEach((t,i)=>{
 
@@ -335,22 +363,25 @@ function renderTasks(){
     row.appendChild(span)
     row.appendChild(del)
 
-    div.appendChild(row)
+    tasksDiv.appendChild(row)
   })
 }
 
+
 function addTask(){
 
-  const input=taskInput
+  if(taskInput.value=="") return
 
-  if(input.value=="") return
+  tasks.push({
+    text:taskInput.value,
+    done:false
+  })
 
-  tasks.push({text:input.value,done:false})
-
-  input.value=""
+  taskInput.value=""
 
   saveTasks()
 }
+
 
 function saveTasks(){
 
@@ -359,14 +390,14 @@ function saveTasks(){
 }
 
 
-// ====== FİNANS ======
+// ===== FINANCE =====
 
 let finance=JSON.parse(localStorage.getItem("finance")||"[]")
 
+
 function renderFinance(){
 
-  const body=document.getElementById("financeBody")
-  body.innerHTML=""
+  financeBody.innerHTML=""
 
   finance.forEach((r,i)=>{
 
@@ -381,6 +412,7 @@ function renderFinance(){
       if(r.done) td.classList.add("finance-done")
 
       td.oninput=()=>{
+
         r.data=[...tr.children]
         .slice(0,4)
         .map(x=>x.innerText)
@@ -391,21 +423,17 @@ function renderFinance(){
       tr.appendChild(td)
     })
 
-    // DONE
+
     const ok=document.createElement("td")
     ok.innerText="✔"
-    ok.style.cursor="pointer"
-
     ok.onclick=()=>{
       r.done=!r.done
       saveFinance()
     }
 
-    // DEL
+
     const del=document.createElement("td")
     del.innerText="X"
-    del.style.cursor="pointer"
-
     del.onclick=()=>{
       finance.splice(i,1)
       saveFinance()
@@ -414,9 +442,10 @@ function renderFinance(){
     tr.appendChild(ok)
     tr.appendChild(del)
 
-    body.appendChild(tr)
+    financeBody.appendChild(tr)
   })
 }
+
 
 function addFinanceRow(){
 
@@ -428,6 +457,7 @@ function addFinanceRow(){
   saveFinance()
 }
 
+
 function saveFinance(){
 
   localStorage.setItem("finance",JSON.stringify(finance))
@@ -435,7 +465,7 @@ function saveFinance(){
 }
 
 
-// ====== BAŞLAT ======
+// ===== START =====
 
 renderTasks()
 renderFinance()
