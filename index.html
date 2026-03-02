@@ -1,339 +1,433 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>Kişisel Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Kişisel Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
 
-<style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
 
-body{
-  margin:0;
-  font-family: Arial;
-  background:#0f172a;
-  color:#e5e7eb;
-}
+        #app {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr;
+            grid-template-rows: 1fr;
+            gap: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 1400px;
+        }
 
-#app{
-  display:grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  height:100vh;
-  gap:10px;
-  padding:10px;
-}
+        /* Panel Stilleri */
+        .panel {
+            background: var(--panel);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
 
-/* Kutular */
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
 
-.panel{
-  background:#020617;
-  border-radius:10px;
-  padding:10px;
-  overflow:auto;
-}
+        /* Takvim Alanı */
+        #months {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
 
-/* Başlık */
+        .month {
+            background: rgba(255,255,255,0.05);
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
 
-h2{
-  margin:5px 0;
-  border-bottom:1px solid #1e293b;
-  padding-bottom:5px;
-}
+        .month:hover, .month.active {
+            background: var(--accent);
+            color: var(--bg);
+            font-weight: bold;
+        }
 
-/* Takvim */
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
 
-#months{
-  display:grid;
-  grid-template-columns: repeat(4,1fr);
-  gap:5px;
-}
+        #days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
 
-.month{
-  background:#020617;
-  padding:10px;
-  text-align:center;
-  border:1px solid #1e293b;
-  cursor:pointer;
-}
+        .day {
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            cursor: pointer;
+            font-size: 0.9rem;
+            position: relative;
+            transition: background 0.2s;
+        }
 
-.month:hover{
-  background:#1e293b;
-}
+        .day:hover { background: rgba(255,255,255,0.1); }
+        .day.selected { border: 2px solid var(--accent); }
+        .day.empty { background: transparent; cursor: default; }
 
-#days{
-  display:grid;
-  grid-template-columns: repeat(7,1fr);
-  gap:5px;
-}
+        .day-emoji {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 0.7rem;
+        }
 
-.day{
-  border:1px solid #1e293b;
-  height:60px;
-  text-align:center;
-  cursor:pointer;
-  position:relative;
-}
+        /* Not ve Emoji Alanı */
+        .note-area {
+            margin-top: 20px;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 12px;
+        }
 
-.dot{
-  width:6px;
-  height:6px;
-  background:#22c55e;
-  border-radius:50%;
-  position:absolute;
-  bottom:5px;
-  right:5px;
-}
+        textarea {
+            width: 100%;
+            height: 80px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 8px;
+            padding: 10px;
+            resize: none;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
 
-/* Not */
+        .emoji-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
 
-textarea{
-  width:100%;
-  height:100px;
-  background:#020617;
-  color:white;
-  border:1px solid #1e293b;
-}
+        .emoji-btn {
+            background: rgba(255,255,255,0.05);
+            border: none;
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 6px;
+            transition: transform 0.2s;
+        }
 
-/* Görev */
+        .emoji-btn:hover { transform: scale(1.2); }
+        .emoji-btn.active { background: var(--accent); }
 
-#taskInput{
-  width:80%;
-}
+        /* Liste Öğeleri (Görev & Finans) */
+        .list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
 
-.task{
-  display:flex;
-  justify-content:space-between;
-  margin:5px 0;
-}
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
 
-.done{
-  text-decoration:line-through;
-  color:#64748b;
-}
+        input {
+            flex-grow: 1;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
 
-/* Buton */
+        .item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            animation: fadeIn 0.3s ease;
+        }
 
-button{
-  background:#2563eb;
-  color:white;
-  border:none;
-  padding:5px 10px;
-  cursor:pointer;
-}
+        .item-text { flex-grow: 1; cursor: pointer; }
+        .item-text.done { text-decoration: line-through; color: var(--text-muted); }
 
-button:hover{
-  background:#1d4ed8;
-}
+        button {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
 
-</style>
+        .del-btn {
+            background: transparent;
+            color: var(--danger);
+            padding: 5px;
+            font-size: 1.2rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            #app { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
-
 <body>
 
 <div id="app">
+    <div class="panel">
+        <h2>📅 Takvim</h2>
+        <div id="months"></div>
+        
+        <h3 id="monthTitle" style="text-align: center; margin: 10px 0;"></h3>
+        
+        <div class="calendar-header">
+            <span>PT</span><span>SA</span><span>ÇA</span><span>PE</span><span>CU</span><span>CT</span><span>PZ</span>
+        </div>
+        <div id="days"></div>
 
-<!-- TAKVİM -->
-<div class="panel">
+        <div class="note-area">
+            <h4 id="selectedDateText" style="margin: 0 0 10px 0; font-size: 0.9rem; color: var(--accent);">Gün Seçiniz</h4>
+            <div class="emoji-bar">
+                <button class="emoji-btn" onclick="setEmoji('✅')">✅</button>
+                <button class="emoji-btn" onclick="setEmoji('🚀')">🚀</button>
+                <button class="emoji-btn" onclick="setEmoji('💡')">💡</button>
+                <button class="emoji-btn" onclick="setEmoji('💰')">💰</button>
+                <button class="emoji-btn" onclick="setEmoji('⚠️')">⚠️</button>
+                <button class="emoji-btn" onclick="setEmoji('')" title="Temizle">✕</button>
+            </div>
+            <textarea id="note" placeholder="Günlük notunuz..."></textarea>
+            <button onclick="saveNote()" style="width: 100%;">Kaydet</button>
+        </div>
+    </div>
 
-<h2>📅 Takvim</h2>
+    <div class="panel">
+        <h2>✅ Görevler</h2>
+        <div class="input-group">
+            <input id="taskInput" placeholder="Yeni görev ekle...">
+            <button onclick="addTask()">+</button>
+        </div>
+        <div id="tasks" class="list-container"></div>
+    </div>
 
-<div id="months"></div>
-
-<h3 id="monthTitle"></h3>
-
-<div id="days"></div>
-
-<h3>Not</h3>
-<textarea id="note"></textarea>
-<button onclick="saveNote()">Kaydet</button>
-
+    <div class="panel">
+        <h2>💰 Finans Notları</h2>
+        <div class="input-group">
+            <input id="financeInput" placeholder="Harcama/Gelir notu...">
+            <button onclick="addFinance()">+</button>
+        </div>
+        <div id="finances" class="list-container"></div>
+    </div>
 </div>
-
-<!-- GÖREV -->
-<div class="panel">
-
-<h2>✅ Görevler</h2>
-
-<input id="taskInput" placeholder="Yeni görev">
-<button onclick="addTask()">+</button>
-
-<div id="tasks"></div>
-
-</div>
-
-<!-- FİNANS -->
-<div class="panel">
-
-<h2>💰 Finans Notları</h2>
-
-<textarea id="finance"></textarea>
-<button onclick="saveFinance()">Kaydet</button>
-
-</div>
-
-</div>
-
 
 <script>
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth();
+    let selectedDay = null;
+    let selectedEmoji = "";
 
-// Tarih
+    const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 
-let currentYear = new Date().getFullYear()
-let currentMonth = null
-let selectedDay = null
-
-const months = [
-"Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
-"Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"
-]
-
-// AY GÖSTER
-
-const monthsDiv = document.getElementById("months")
-
-months.forEach((m,i)=>{
-  const div=document.createElement("div")
-  div.className="month"
-  div.innerText=m
-  div.onclick=()=>openMonth(i)
-  monthsDiv.appendChild(div)
-})
-
-// AY AÇ
-
-function openMonth(m){
-
-  currentMonth=m
-  document.getElementById("monthTitle").innerText=
-  months[m]+" "+currentYear
-
-  const daysDiv=document.getElementById("days")
-  daysDiv.innerHTML=""
-
-  const days=new Date(currentYear,m+1,0).getDate()
-
-  for(let i=1;i<=days;i++){
-
-    const d=document.createElement("div")
-    d.className="day"
-    d.innerText=i
-
-    d.onclick=()=>selectDay(i)
-
-    const key=`${currentYear}-${m}-${i}`
-
-    if(localStorage.getItem(key)){
-      const dot=document.createElement("div")
-      dot.className="dot"
-      d.appendChild(dot)
+    // Başlatma
+    function init() {
+        renderMonths();
+        openMonth(currentMonth);
+        renderTasks();
+        renderFinances();
     }
 
-    daysDiv.appendChild(d)
-  }
-}
-
-// GÜN SEÇ
-
-function selectDay(d){
-
-  selectedDay=d
-
-  const key=`${currentYear}-${currentMonth}-${d}`
-
-  document.getElementById("note").value=
-    localStorage.getItem(key)||""
-}
-
-// NOT KAYDET
-
-function saveNote(){
-
-  if(selectedDay==null) return
-
-  const key=`${currentYear}-${currentMonth}-${selectedDay}`
-
-  localStorage.setItem(
-    key,
-    document.getElementById("note").value
-  )
-
-  openMonth(currentMonth)
-}
-
-// GÖREVLER
-
-let tasks=JSON.parse(localStorage.getItem("tasks")||"[]")
-
-function renderTasks(){
-
-  const div=document.getElementById("tasks")
-  div.innerHTML=""
-
-  tasks.forEach((t,i)=>{
-
-    const row=document.createElement("div")
-    row.className="task"
-
-    const span=document.createElement("span")
-    span.innerText=t.text
-    if(t.done) span.classList.add("done")
-
-    span.onclick=()=>{
-      t.done=!t.done
-      saveTasks()
+    // Aylar Listesi
+    function renderMonths() {
+        const monthsDiv = document.getElementById("months");
+        months.forEach((m, i) => {
+            const div = document.createElement("div");
+            div.className = "month" + (i === currentMonth ? " active" : "");
+            div.innerText = m;
+            div.onclick = () => {
+                document.querySelectorAll('.month').forEach(el => el.classList.remove('active'));
+                div.classList.add('active');
+                openMonth(i);
+            };
+            monthsDiv.appendChild(div);
+        });
     }
 
-    const del=document.createElement("button")
-    del.innerText="X"
-    del.onclick=()=>{
-      tasks.splice(i,1)
-      saveTasks()
+    // Ayı Görüntüle (Pazartesi Başlangıçlı)
+    function openMonth(m) {
+        currentMonth = m;
+        document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
+        const daysDiv = document.getElementById("days");
+        daysDiv.innerHTML = "";
+
+        const firstDayOfMonth = new Date(currentYear, m, 1).getDay();
+        // JS'de 0 Pazar'dır. Pazartesi'yi 0 yapmak için:
+        const startOffset = (firstDayOfMonth === 0) ? 6 : firstDayOfMonth - 1;
+        const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
+
+        // Boşluklar
+        for (let i = 0; i < startOffset; i++) {
+            const empty = document.createElement("div");
+            empty.className = "day empty";
+            daysDiv.appendChild(empty);
+        }
+
+        // Günler
+        for (let i = 1; i <= daysInMonth; i++) {
+            const d = document.createElement("div");
+            d.className = "day";
+            d.innerText = i;
+            
+            const key = `note-${currentYear}-${m}-${i}`;
+            const savedData = JSON.parse(localStorage.getItem(key) || "{}");
+            
+            if (savedData.emoji) {
+                const eSpan = document.createElement("span");
+                eSpan.className = "day-emoji";
+                eSpan.innerText = savedData.emoji;
+                d.appendChild(eSpan);
+            }
+
+            d.onclick = () => selectDay(i, d);
+            daysDiv.appendChild(d);
+        }
     }
 
-    row.appendChild(span)
-    row.appendChild(del)
+    function selectDay(d, element) {
+        selectedDay = d;
+        document.querySelectorAll('.day').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        
+        const key = `note-${currentYear}-${currentMonth}-${d}`;
+        const savedData = JSON.parse(localStorage.getItem(key) || "{}");
+        
+        document.getElementById("note").value = savedData.text || "";
+        selectedEmoji = savedData.emoji || "";
+        document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]} Notu`;
+    }
 
-    div.appendChild(row)
-  })
-}
+    function setEmoji(e) {
+        selectedEmoji = e;
+        // Basit görsel geri bildirim
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.innerText === e);
+        });
+    }
 
-function addTask(){
+    function saveNote() {
+        if (!selectedDay) return alert("Lütfen bir gün seçin!");
+        const key = `note-${currentYear}-${currentMonth}-${selectedDay}`;
+        const data = {
+            text: document.getElementById("note").value,
+            emoji: selectedEmoji
+        };
+        localStorage.setItem(key, JSON.stringify(data));
+        openMonth(currentMonth); // Takvimi yenile (emoji görünmesi için)
+    }
 
-  const input=document.getElementById("taskInput")
+    // GÖREV YÖNETİMİ
+    let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
+    function renderTasks() {
+        const container = document.getElementById("tasks");
+        container.innerHTML = "";
+        tasks.forEach((t, i) => {
+            container.innerHTML += `
+                <div class="item-row">
+                    <span class="item-text ${t.done ? 'done' : ''}" onclick="toggleTask(${i})">${t.text}</span>
+                    <button class="del-btn" onclick="deleteTask(${i})">×</button>
+                </div>`;
+        });
+    }
 
-  if(input.value=="") return
+    function addTask() {
+        const input = document.getElementById("taskInput");
+        if (!input.value) return;
+        tasks.push({ text: input.value, done: false });
+        input.value = "";
+        saveAndRenderTasks();
+    }
 
-  tasks.push({
-    text:input.value,
-    done:false
-  })
+    function toggleTask(i) { tasks[i].done = !tasks[i].done; saveAndRenderTasks(); }
+    function deleteTask(i) { tasks.splice(i, 1); saveAndRenderTasks(); }
+    function saveAndRenderTasks() { localStorage.setItem("tasks", JSON.stringify(tasks)); renderTasks(); }
 
-  input.value=""
+    // FİNANS YÖNETİMİ (Yeni Liste Yapısı)
+    let finances = JSON.parse(localStorage.getItem("finances") || "[]");
+    function renderFinances() {
+        const container = document.getElementById("finances");
+        container.innerHTML = "";
+        finances.forEach((f, i) => {
+            container.innerHTML += `
+                <div class="item-row">
+                    <span class="item-text">${f.text}</span>
+                    <button class="del-btn" onclick="deleteFinance(${i})">×</button>
+                </div>`;
+        });
+    }
 
-  saveTasks()
-}
+    function addFinance() {
+        const input = document.getElementById("financeInput");
+        if (!input.value) return;
+        finances.push({ text: input.value });
+        input.value = "";
+        saveAndRenderFinances();
+    }
 
-function saveTasks(){
+    function deleteFinance(i) { finances.splice(i, 1); saveAndRenderFinances(); }
+    function saveAndRenderFinances() { localStorage.setItem("finances", JSON.stringify(finances)); renderFinances(); }
 
-  localStorage.setItem("tasks",JSON.stringify(tasks))
-  renderTasks()
-}
-
-// FİNANS
-
-function saveFinance(){
-
-  localStorage.setItem(
-    "finance",
-    document.getElementById("finance").value
-  )
-}
-
-document.getElementById("finance").value=
-  localStorage.getItem("finance")||""
-
-// BAŞLAT
-
-renderTasks()
-
+    init();
 </script>
 
 </body>
