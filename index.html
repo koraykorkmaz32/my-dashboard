@@ -3,156 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Ultimate Life Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      import { getDatabase, ref, set, onValue, push, remove, update } 
-      from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+      import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-      // BURAYA KENDİ FIREBASE CONFIG BİLGİLERİNİ YAPIŞTIR!
-      const firebaseConfig = {
-      apiKey: "AIzaSyDnvY1frFDXMbMspy8a-z_Z41ofSz8wu2k",
-      authDomain: "korkmazdashboard.firebaseapp.com",
-      databaseURL: "https://korkmazdashboard-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "korkmazdashboard",
-      storageBucket: "korkmazdashboard.firebasestorage.app",
-      messagingSenderId: "119430771116",
-      appId: "1:119430771116:web:c7d25cfb8f320cbb940a09",
-      measurementId: "G-87JCTF09T7"
-    };
+      // FIREBASE AYARLARINI BURAYA YAPIŞTIR
+       const firebaseConfig = {
+          apiKey: "AIzaSyDnvY1frFDXMbMspy8a-z_Z41ofSz8wu2k",
+          authDomain: "korkmazdashboard.firebaseapp.com",
+          databaseURL: "https://korkmazdashboard-default-rtdb.europe-west1.firebasedatabase.app",
+          projectId: "korkmazdashboard",
+          storageBucket: "korkmazdashboard.firebasestorage.app",
+          messagingSenderId: "119430771116",
+          appId: "1:119430771116:web:c7d25cfb8f320cbb940a09",
+          measurementId: "G-87JCTF09T7"
+        };
 
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
-      // GLOBAL DEĞİŞKENLER
+      // --- GLOBAL DEĞİŞKENLER ---
       let currentYear = new Date().getFullYear();
       let currentMonth = new Date().getMonth();
       let selectedDay = null;
       let selectedEmoji = "";
       const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 
-      // --- TAKVİM FONKSİYONLARI ---
+      // --- 1. SELAMLAMA VE HAVA DURUMU ---
+      async function updateWeather() {
+        const greetingElement = document.getElementById("greeting");
+        const hr = new Date().getHours();
+        const greet = hr < 12 ? "Günaydın" : hr < 18 ? "Tünaydın" : "İyi Akşamlar";
+        greetingElement.innerText = `${greet}, Şef! 🚀`;
+
+        try {
+            // İstanbul varsayılan, tarayıcı konumu eklenebilir
+            const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=41.0082&longitude=28.9784&current_weather=true");
+            const data = await res.json();
+            document.getElementById("temp").innerText = `${data.current_weather.temperature}°C`;
+        } catch (e) { document.getElementById("temp").innerText = "Hava durumu yüklenemedi"; }
+      }
+
+      // --- 2. POMODORO SAYACI ---
+      let timer;
+      let timeLeft = 25 * 60;
+      window.toggleTimer = () => {
+        const btn = document.getElementById("timerBtn");
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+            btn.innerText = "Başlat";
+        } else {
+            btn.innerText = "Durdur";
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    alert("Süre bitti! Mola zamanı.");
+                }
+            }, 1000);
+        }
+      };
+      function updateTimerDisplay() {
+        const m = Math.floor(timeLeft / 60);
+        const s = timeLeft % 60;
+        document.getElementById("timerDisplay").innerText = `${m}:${s < 10 ? '0'+s : s}`;
+      }
+
+      // --- 3. TAKVİM & NOTLAR ---
       window.openMonth = (m) => {
         currentMonth = m;
         document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
         const daysDiv = document.getElementById("days");
         daysDiv.innerHTML = "";
-
         const firstDay = new Date(currentYear, m, 1).getDay();
         const startOffset = (firstDay === 0) ? 6 : firstDay - 1;
         const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
 
-        for (let i = 0; i < startOffset; i++) {
-          const empty = document.createElement("div");
-          empty.className = "day empty";
-          daysDiv.appendChild(empty);
-        }
+        for (let i = 0; i < startOffset; i++) daysDiv.innerHTML += `<div class="day empty"></div>`;
 
         for (let i = 1; i <= daysInMonth; i++) {
           const d = document.createElement("div");
           d.className = "day";
           d.innerText = i;
-          
-          const dbRef = ref(db, `calendar/${currentYear}/${m}/${i}`);
-          onValue(dbRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data && data.emoji) {
-                let eSpan = d.querySelector(".day-emoji") || document.createElement("span");
-                eSpan.className = "day-emoji";
-                eSpan.innerText = data.emoji;
-                d.appendChild(eSpan);
+          onValue(ref(db, `calendar/${currentYear}/${m}/${i}`), (snap) => {
+            const data = snap.val();
+            if (data?.emoji) {
+                let e = d.querySelector(".day-emoji") || document.createElement("span");
+                e.className = "day-emoji"; e.innerText = data.emoji; d.appendChild(e);
             }
           });
-
           d.onclick = () => selectDay(i, d);
           daysDiv.appendChild(d);
         }
       };
 
-      window.selectDay = (d, element) => {
+      window.selectDay = (d, el) => {
         selectedDay = d;
-        document.querySelectorAll('.day').forEach(el => el.classList.remove('selected'));
-        element.classList.add('selected');
-        
-        const dbRef = ref(db, `calendar/${currentYear}/${currentMonth}/${d}`);
-        onValue(dbRef, (snapshot) => {
-            const data = snapshot.val() || {};
+        document.querySelectorAll('.day').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        onValue(ref(db, `calendar/${currentYear}/${currentMonth}/${d}`), (snap) => {
+            const data = snap.val() || {};
             document.getElementById("note").value = data.text || "";
             selectedEmoji = data.emoji || "";
-            document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]} Notu`;
+            document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]}`;
         }, { onlyOnce: true });
       };
 
       window.saveNote = () => {
         if (!selectedDay) return;
         set(ref(db, `calendar/${currentYear}/${currentMonth}/${selectedDay}`), {
-          text: document.getElementById("note").value,
-          emoji: selectedEmoji
+          text: document.getElementById("note").value, emoji: selectedEmoji
         });
       };
 
       window.setEmoji = (e) => { selectedEmoji = e; };
 
-      // --- GÖREV YÖNETİMİ ---
-      window.addTask = () => {
-        const input = document.getElementById("taskInput");
-        if (!input.value) return;
-        const newEntry = push(ref(db, 'tasks'));
-        set(newEntry, { text: input.value, done: false });
-        input.value = "";
-      };
-
-      window.toggleTask = (id, status) => {
-        update(ref(db, 'tasks/' + id), { done: !status });
-      };
-
-      window.deleteTask = (id) => {
-        remove(ref(db, 'tasks/' + id));
-      };
-
-      onValue(ref(db, 'tasks'), (snapshot) => {
-        const container = document.getElementById("tasks");
-        container.innerHTML = "";
-        const data = snapshot.val();
-        for (let id in data) {
-          container.innerHTML += `
-            <div class="item-row">
-                <span class="item-text ${data[id].done ? 'done' : ''}" onclick="toggleTask('${id}', ${data[id].done})">${data[id].text}</span>
-                <button class="del-btn" onclick="deleteTask('${id}')">×</button>
-            </div>`;
-        }
-      });
-
-      // --- FİNANS YÖNETİMİ ---
+      // --- 4. AKILLI FİNANS (OTOMATİK TOPLAM) ---
       window.addFinance = () => {
         const input = document.getElementById("financeInput");
         if (!input.value) return;
-        push(ref(db, 'finances'), { text: input.value });
+        push(ref(db, 'finances'), { text: input.value, date: new Date().toLocaleDateString() });
         input.value = "";
       };
 
-      window.deleteFinance = (id) => {
-        remove(ref(db, 'finances/' + id));
-      };
-
-      onValue(ref(db, 'finances'), (snapshot) => {
+      onValue(ref(db, 'finances'), (snap) => {
         const container = document.getElementById("finances");
         container.innerHTML = "";
-        const data = snapshot.val();
+        let total = 0;
+        const data = snap.val();
         for (let id in data) {
-          container.innerHTML += `
+          container.innerHTML += `<div class="item-row"><span>${data[id].text}</span><button class="del-btn" onclick="deleteItem('finances/${id}')">×</button></div>`;
+          const amount = data[id].text.match(/\d+/g);
+          if (amount) total += parseInt(amount[amount.length - 1]);
+        }
+        document.getElementById("totalFinance").innerText = `Toplam: ${total} TL`;
+      });
+
+      // --- 5. ALIŞKANLIK TAKİBİ ---
+      window.addHabit = () => {
+        const val = document.getElementById("habitInput").value;
+        if(val) push(ref(db, 'habits'), { name: val, done: false });
+        document.getElementById("habitInput").value = "";
+      };
+
+      onValue(ref(db, 'habits'), (snap) => {
+        const container = document.getElementById("habits");
+        container.innerHTML = "";
+        const data = snap.val();
+        for (let id in data) {
+            container.innerHTML += `
             <div class="item-row">
-                <span class="item-text">${data[id].text}</span>
-                <button class="del-btn" onclick="deleteFinance('${id}')">×</button>
+                <span class="${data[id].done ? 'done' : ''}" onclick="toggleHabit('${id}', ${data[id].done})">🔥 ${data[id].name}</span>
+                <button class="del-btn" onclick="deleteItem('habits/${id}')">×</button>
             </div>`;
         }
       });
 
-      // AYLARI OLUŞTUR
-      const monthsDiv = document.getElementById("months");
-      months.forEach((m, i) => {
+      window.toggleHabit = (id, status) => update(ref(db, 'habits/' + id), { done: !status });
+      window.deleteItem = (path) => remove(ref(db, path));
+
+      // --- 6. GÖREVLER ---
+      window.addTask = () => {
+        const input = document.getElementById("taskInput");
+        if (input.value) push(ref(db, 'tasks'), { text: input.value, done: false });
+        input.value = "";
+      };
+
+      onValue(ref(db, 'tasks'), (snap) => {
+        const container = document.getElementById("tasks");
+        container.innerHTML = "";
+        const data = snap.val();
+        for (let id in data) {
+          container.innerHTML += `<div class="item-row">
+            <span class="${data[id].done ? 'done' : ''}" onclick="toggleTask('${id}', ${data[id].done})">${data[id].text}</span>
+            <button class="del-btn" onclick="deleteItem('tasks/${id}')">×</button></div>`;
+        }
+      });
+      window.toggleTask = (id, status) => update(ref(db, 'tasks/' + id), { done: !status });
+
+      // --- BAŞLATICI ---
+      function init() {
+        updateWeather();
+        updateTimerDisplay();
+        const monthsDiv = document.getElementById("months");
+        months.forEach((m, i) => {
           const div = document.createElement("div");
           div.className = "month" + (i === currentMonth ? " active" : "");
           div.innerText = m;
@@ -162,71 +202,119 @@
               openMonth(i);
           };
           monthsDiv.appendChild(div);
-      });
-      openMonth(currentMonth);
+        });
+        openMonth(currentMonth);
+        lucide.createIcons();
+      }
+      init();
     </script>
 
     <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --text: #f8fafc; --text-muted: #94a3b8; --danger: #ef4444; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        #app { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 20px; max-width: 1400px; margin: auto; }
-        .panel { background: var(--panel); border-radius: 16px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.05); }
-        #months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
-        .month { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center; cursor: pointer; font-size: 0.8rem; }
-        .month.active { background: var(--accent); color: var(--bg); font-weight: bold; }
-        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 10px; }
+        :root { --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); --accent: #38bdf8; --text: #f8fafc; }
+        body { 
+            margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: radial-gradient(circle at top left, #1e293b, #0f172a); 
+            color: var(--text); min-height: 100vh; padding: 20px;
+        }
+        #app { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 20px; max-width: 1600px; margin: auto; }
+        
+        .panel { 
+            background: var(--card); backdrop-filter: blur(12px); border-radius: 24px; padding: 24px; 
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+        
+        h2 { font-size: 1.1rem; display: flex; align-items: center; gap: 10px; margin-top: 0; color: var(--accent); }
+        
+        /* Widgetlar */
+        .widget-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .mini-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; text-align: center; }
+        
+        /* Takvim */
+        #months { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-bottom: 15px; }
+        .month { font-size: 0.7rem; padding: 5px; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; text-align: center; }
+        .month.active { background: var(--accent); color: #000; font-weight: bold; }
         #days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-        .day { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255,255,255,0.03); cursor: pointer; font-size: 0.9rem; position: relative; }
-        .day.selected { border: 2px solid var(--accent); }
-        .day-emoji { position: absolute; bottom: 2px; right: 2px; font-size: 0.7rem; }
-        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px; }
-        .item-text.done { text-decoration: line-through; color: var(--text-muted); }
-        input, textarea { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 8px; box-sizing: border-box; }
-        button { background: var(--accent); color: var(--bg); border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .del-btn { background: transparent; color: var(--danger); font-size: 1.2rem; }
-        .emoji-btn { background: rgba(255,255,255,0.05); border: none; cursor: pointer; padding: 5px; border-radius: 4px; }
-        @media (max-width: 1024px) { #app { grid-template-columns: 1fr; } }
+        .day { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(255,255,255,0.03); cursor: pointer; font-size: 0.8rem; position: relative; }
+        .day.selected { background: var(--accent); color: #000; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.6rem; opacity: 0.5; margin-bottom: 5px; }
+
+        /* Listeler */
+        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 8px; font-size: 0.9rem; }
+        .done { text-decoration: line-through; opacity: 0.4; }
+        
+        input, textarea { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 12px; box-sizing: border-box; }
+        button { background: var(--accent); color: #000; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        button:hover { transform: scale(1.05); opacity: 0.9; }
+        .del-btn { background: transparent; color: #ff4757; font-size: 1.2rem; padding: 0 5px; }
+
+        .timer-display { font-size: 2rem; font-weight: 700; margin: 10px 0; }
+        #totalFinance { font-weight: bold; color: var(--accent); text-align: right; display: block; margin-top: 10px; }
+
+        @media (max-width: 1100px) { #app { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div id="app">
     <div class="panel">
-        <h2>📅 Takvim</h2>
+        <h1 id="greeting" style="margin-bottom: 5px; font-size: 1.5rem;">Merhaba!</h1>
+        <div class="widget-row">
+            <div class="mini-card">
+                <i data-lucide="cloud-sun"></i>
+                <div id="temp" style="font-size: 1.2rem; font-weight: bold;">--°C</div>
+            </div>
+            <div class="mini-card">
+                <i data-lucide="timer"></i>
+                <div id="timerDisplay" class="timer-display">25:00</div>
+                <button id="timerBtn" onclick="toggleTimer()" style="font-size: 0.7rem; padding: 5px 10px;">Başlat</button>
+            </div>
+        </div>
+
+        <h2><i data-lucide="Zap"></i> Alışkanlık Takibi</h2>
+        <div style="display:flex; gap:10px; margin-bottom:15px">
+            <input id="habitInput" placeholder="Yeni alışkanlık...">
+            <button onclick="addHabit()">+</button>
+        </div>
+        <div id="habits"></div>
+    </div>
+
+    <div class="panel">
+        <h2><i data-lucide="calendar"></i> Takvim & Günlük</h2>
         <div id="months"></div>
-        <h3 id="monthTitle" style="text-align: center;"></h3>
+        <h3 id="monthTitle" style="text-align: center; margin: 10px 0; font-size: 1rem;"></h3>
         <div class="calendar-header"><span>PT</span><span>SA</span><span>ÇA</span><span>PE</span><span>CU</span><span>CT</span><span>PZ</span></div>
         <div id="days"></div>
-        <div style="margin-top:20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px;">
-            <h4 id="selectedDateText" style="margin-top:0">Gün Seçin</h4>
-            <div style="margin-bottom:10px">
-                <button class="emoji-btn" onclick="setEmoji('✅')">✅</button>
-                <button class="emoji-btn" onclick="setEmoji('🚀')">🚀</button>
-                <button class="emoji-btn" onclick="setEmoji('💡')">💡</button>
-                <button class="emoji-btn" onclick="setEmoji('💰')">💰</button>
-                <button class="emoji-btn" onclick="setEmoji('⚠️')">⚠️</button>
+        
+        <div style="margin-top:25px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px;">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 id="selectedDateText" style="margin:0">Gün Seçin</h4>
+                <div>
+                    <button class="emoji-btn" style="background:none" onclick="setEmoji('✅')">✅</button>
+                    <button class="emoji-btn" style="background:none" onclick="setEmoji('🚀')">🚀</button>
+                    <button class="emoji-btn" style="background:none" onclick="setEmoji('💡')">💡</button>
+                    <button class="emoji-btn" style="background:none" onclick="setEmoji('💰')">💰</button>
+                    <button class="emoji-btn" style="background:none" onclick="setEmoji('')">✕</button>
+                </div>
             </div>
-            <textarea id="note"></textarea>
+            <textarea id="note" placeholder="Bugün neler oldu?"></textarea>
             <button onclick="saveNote()" style="width:100%; margin-top:10px">Buluta Kaydet</button>
         </div>
     </div>
 
     <div class="panel">
-        <h2>✅ Görevler</h2>
+        <h2><i data-lucide="check-circle"></i> Görevler</h2>
         <div style="display:flex; gap:10px; margin-bottom:15px">
-            <input id="taskInput" placeholder="Yeni görev...">
+            <input id="taskInput" placeholder="Görev ekle...">
             <button onclick="addTask()">+</button>
         </div>
-        <div id="tasks"></div>
-    </div>
+        <div id="tasks" style="max-height: 250px; overflow-y: auto; margin-bottom: 30px;"></div>
 
-    <div class="panel">
-        <h2>💰 Finans</h2>
+        <h2><i data-lucide="wallet"></i> Akıllı Finans</h2>
         <div style="display:flex; gap:10px; margin-bottom:15px">
-            <input id="financeInput" placeholder="Harcama...">
+            <input id="financeInput" placeholder="Market 150 (Yaz ve Topla)">
             <button onclick="addFinance()">+</button>
         </div>
         <div id="finances"></div>
+        <div id="totalFinance">Toplam: 0 TL</div>
     </div>
 </div>
 
