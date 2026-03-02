@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life OS | Secure Edition</title>
+    <title>Life OS | Command Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+      import { getDatabase, ref, set, onValue, push, remove, update, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
       import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
       // 1. FIREBASE CONFIG
@@ -30,19 +30,17 @@
 
       let userPath = "";
 
-      // --- LOGIN SİSTEMİ ---
+      // --- AUTH ---
       window.handleLogin = () => {
           const email = document.getElementById("email").value;
           const pass = document.getElementById("pass").value;
-          signInWithEmailAndPassword(auth, email, pass).catch(err => alert("Giriş Hatası: " + err.message));
+          signInWithEmailAndPassword(auth, email, pass).catch(err => alert("Hata: " + err.message));
       };
-
       window.handleRegister = () => {
           const email = document.getElementById("email").value;
           const pass = document.getElementById("pass").value;
-          createUserWithEmailAndPassword(auth, email, pass).catch(err => alert("Kayıt Hatası: " + err.message));
+          createUserWithEmailAndPassword(auth, email, pass).catch(err => alert("Hata: " + err.message));
       };
-
       window.handleLogout = () => signOut(auth);
 
       onAuthStateChanged(auth, (user) => {
@@ -57,26 +55,25 @@
           }
       });
 
-      // --- DASHBOARD BAŞLATICI ---
       function initDashboard() {
           loadSettings();
           openMonth(new Date().getMonth());
           renderStocks();
           renderFinance();
           renderTasks();
+          renderAlerts(); // Yeni Modül
           updateTimerDisplay();
           lucide.createIcons();
       }
 
-      // --- MODÜL VE AYARLAR ---
+      // --- MODÜL AYARLARI ---
       window.toggleSettingsMenu = (e) => { e.stopPropagation(); document.getElementById('settingsMenu').classList.toggle('active'); };
       document.addEventListener('click', () => document.getElementById('settingsMenu').classList.remove('active'));
-
       window.updateModuleView = (modId, isChecked) => update(ref(db, userPath + 'settings/modules'), { [modId]: isChecked });
 
       function loadSettings() {
           onValue(ref(db, userPath + 'settings/modules'), (snap) => {
-              const mods = snap.val() || { mod_weather:true, mod_pomodoro:true, mod_calendar:true, mod_stocks:true, mod_finance:true, mod_tasks:true };
+              const mods = snap.val() || { mod_weather:true, mod_pomodoro:true, mod_calendar:true, mod_stocks:true, mod_finance:true, mod_tasks:true, mod_alerts:true };
               Object.keys(mods).forEach(id => {
                   const el = document.getElementById(id);
                   if (el) mods[id] ? el.classList.remove('hidden') : el.classList.add('hidden');
@@ -84,26 +81,44 @@
               });
           });
           onValue(ref(db, userPath + 'settings'), (snap) => {
-              const data = snap.val() || { userName: "Şef", city: "Istanbul", lat: 41.0082, lon: 28.9784 };
+              const data = snap.val() || { userName: "Şef" };
               document.getElementById("greeting").innerText = `Selam, ${data.userName}!`;
-              document.getElementById("userNameInput").value = data.userName;
-              updateWeather(data.lat, data.lon, data.city);
           });
       }
 
+      // --- ALERTLER (TRADINGVIEW SİNYALLERİ) ---
+      function renderAlerts() {
+          const alertRef = query(ref(db, userPath + 'alerts'), limitToLast(5));
+          onValue(alertRef, (snap) => {
+              const container = document.getElementById("alertList");
+              container.innerHTML = "";
+              const data = snap.val();
+              if(!data) { container.innerHTML = "<small style='opacity:0.5'>Henüz sinyal yok...</small>"; return; }
+              for (let id in data) {
+                  container.innerHTML = `
+                    <div class="item-row alert-row">
+                        <div style="flex:1">
+                            <b style="color:#f87171">⚠️ ${data[id].symbol || 'Sinyal'}</b>
+                            <div style="font-size:0.75rem">${data[id].message || data[id]}</div>
+                        </div>
+                        <button class="del-btn" onclick="deleteItem('alerts/${id}')">×</button>
+                    </div>` + container.innerHTML;
+              }
+          });
+      }
+      window.clearAlerts = () => remove(ref(db, userPath + 'alerts'));
+
       // --- HAVA DURUMU ---
       async function updateWeather(lat, lon, city) {
-          document.getElementById("cityName").innerText = city;
           const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,windspeed_10m&current_weather=true&timezone=auto`);
           const data = await res.json();
           document.getElementById("temp").innerText = `${data.current_weather.temperature}°C`;
           let html = "";
           for(let i=0; i<6; i++) {
-              html += `<div class="weather-row"><span>${data.hourly.time[i].split("T")[1]}</span><b>${data.hourly.temperature_2m[i]}°</b><span>%${data.hourly.precipitation_probability[i]} 🌧️</span><span>${data.hourly.windspeed_10m[i]}km/h</span></div>`;
+              html += `<div class="weather-row"><span>${data.hourly.time[i].split("T")[1]}</span><b>${data.hourly.temperature_2m[i]}°</b><span>%${data.hourly.precipitation_probability[i]} 🌧️</span></div>`;
           }
           document.getElementById("hourlyForecast").innerHTML = html;
       }
-
       window.searchCity = async () => {
           const city = document.getElementById("cityInput").value;
           const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=tr&format=json`);
@@ -114,7 +129,7 @@
           }
       };
 
-      // --- BORSA ---
+      // --- DİĞER FONKSİYONLAR ---
       window.addStock = () => {
           const s = document.getElementById("stockSymbol").value.toUpperCase();
           const n = document.getElementById("stockNote").value;
@@ -129,39 +144,6 @@
           });
       }
 
-      // --- TAKVİM ---
-      let currentYear = new Date().getFullYear();
-      let currentMonth = new Date().getMonth();
-      let selectedDay = null;
-      let selectedEmoji = "";
-      const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
-
-      window.openMonth = (m) => {
-          currentMonth = m;
-          document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
-          const daysDiv = document.getElementById("days"); daysDiv.innerHTML = "";
-          const firstDay = new Date(currentYear, m, 1).getDay();
-          const offset = (firstDay === 0) ? 6 : firstDay - 1;
-          for (let i = 0; i < offset; i++) daysDiv.innerHTML += `<div class="day empty"></div>`;
-          for (let i = 1; i <= new Date(currentYear, m + 1, 0).getDate(); i++) {
-              const d = document.createElement("div"); d.className = "day"; d.innerText = i;
-              onValue(ref(db, userPath + `calendar/${currentYear}/${m}/${i}`), (snap) => {
-                  if (snap.val()?.emoji) d.innerHTML = `${i}<span class="day-emoji">${snap.val().emoji}</span>`;
-              });
-              d.onclick = () => selectDay(i, d);
-              daysDiv.appendChild(d);
-          }
-      };
-      window.selectDay = (d, el) => {
-          selectedDay = d; document.querySelectorAll('.day').forEach(x => x.classList.remove('selected')); el.classList.add('selected');
-          onValue(ref(db, userPath + `calendar/${currentYear}/${currentMonth}/${d}`), (snap) => {
-              const data = snap.val() || {}; document.getElementById("note").value = data.text || "";
-              document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]}`;
-          }, { onlyOnce: true });
-      };
-      window.saveNote = () => { if(selectedDay) set(ref(db, userPath + `calendar/${currentYear}/${currentMonth}/${selectedDay}`), { text: document.getElementById("note").value, emoji: selectedEmoji }); };
-
-      // --- GÖREVLER (TO-DO) ---
       window.addTask = () => {
           const val = document.getElementById("taskInput").value;
           if(val) push(ref(db, userPath + 'tasks'), { text: val, done: false });
@@ -175,7 +157,6 @@
           });
       }
 
-      // --- FİNANS ---
       window.addFinance = () => {
           const val = document.getElementById("financeInput").value;
           if(val) push(ref(db, userPath + 'finances'), { text: val });
@@ -194,17 +175,38 @@
           });
       }
 
+      // TAKVİM
+      let currentYear = new Date().getFullYear();
+      let currentMonth = new Date().getMonth();
+      let selectedDay = null;
+      let selectedEmoji = "";
+      const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+      window.openMonth = (m) => {
+          currentMonth = m; document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
+          const daysDiv = document.getElementById("days"); daysDiv.innerHTML = "";
+          const firstDay = new Date(currentYear, m, 1).getDay();
+          const offset = (firstDay === 0) ? 6 : firstDay - 1;
+          for (let i = 0; i < offset; i++) daysDiv.innerHTML += `<div class="day empty"></div>`;
+          for (let i = 1; i <= new Date(currentYear, m + 1, 0).getDate(); i++) {
+              const d = document.createElement("div"); d.className = "day"; d.innerText = i;
+              onValue(ref(db, userPath + `calendar/${currentYear}/${m}/${i}`), (snap) => { if (snap.val()?.emoji) d.innerHTML = `${i}<span class="day-emoji">${snap.val().emoji}</span>`; });
+              d.onclick = () => selectDay(i, d); daysDiv.appendChild(d);
+          }
+      };
+      window.selectDay = (d, el) => {
+          selectedDay = d; document.querySelectorAll('.day').forEach(x => x.classList.remove('selected')); el.classList.add('selected');
+          onValue(ref(db, userPath + `calendar/${currentYear}/${currentMonth}/${d}`), (snap) => {
+              document.getElementById("note").value = snap.val()?.text || "";
+              document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]}`;
+          }, { onlyOnce: true });
+      };
+      window.saveNote = () => { if(selectedDay) set(ref(db, userPath + `calendar/${currentYear}/${currentMonth}/${selectedDay}`), { text: document.getElementById("note").value, emoji: selectedEmoji }); };
+
       // POMODORO
       let timer; let timeLeft = 25 * 60;
-      window.toggleTimer = () => {
-          if (timer) { clearInterval(timer); timer = null; document.getElementById("timerBtn").innerText = "Başlat"; }
-          else { timer = setInterval(() => { timeLeft--; updateTimerDisplay(); }, 1000); document.getElementById("timerBtn").innerText = "Durdur"; }
-      };
-      window.resetTimer = () => { clearInterval(timer); timer = null; timeLeft = 25 * 60; updateTimerDisplay(); document.getElementById("timerBtn").innerText = "Başlat"; };
-      function updateTimerDisplay() {
-          const m = Math.floor(timeLeft / 60); const s = timeLeft % 60;
-          document.getElementById("timerDisplay").innerText = `${m}:${s < 10 ? '0'+s : s}`;
-      }
+      window.toggleTimer = () => { if (timer) { clearInterval(timer); timer = null; } else { timer = setInterval(() => { timeLeft--; updateTimerDisplay(); }, 1000); } };
+      window.resetTimer = () => { clearInterval(timer); timer = null; timeLeft = 25 * 60; updateTimerDisplay(); };
+      function updateTimerDisplay() { document.getElementById("timerDisplay").innerText = `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`; }
 
       window.deleteItem = (p) => remove(ref(db, userPath + p));
       window.saveName = () => set(ref(db, userPath + 'settings/userName'), document.getElementById("userNameInput").value);
@@ -221,24 +223,21 @@
     <style>
         :root { --bg: #020617; --card: rgba(15, 23, 42, 0.9); --accent: #38bdf8; --text: #f8fafc; }
         body { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-        
-        /* LOGIN EKRANI */
-        #loginScreen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 2000; flex-direction: column; gap: 20px; }
+        #loginScreen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 2000; flex-direction: column; }
         .login-card { background: var(--card); padding: 40px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); width: 320px; text-align: center; }
-        
-        /* DASHBOARD */
         #app { display: none; grid-template-columns: 1fr 1.2fr 1fr; gap: 20px; max-width: 1600px; margin: auto; padding: 20px; }
         .panel { background: var(--card); backdrop-filter: blur(20px); border-radius: 28px; padding: 24px; border: 1px solid rgba(255,255,255,0.05); }
         .hidden { display: none !important; }
 
-        /* AYARLAR */
+        /* YENİ ALARM STİLİ */
+        .alert-row { border-left: 4px solid #f87171; background: rgba(248, 113, 113, 0.05); }
+        
         .settings-drawer { position: fixed; top: 20px; right: 20px; z-index: 1000; }
         .settings-btn { width: 45px; height: 45px; border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); cursor:pointer; color:var(--accent); display:flex; align-items:center; justify-content:center; }
-        .settings-menu { display:none; position:absolute; right:0; top:55px; background: #0f172a; border: 1px solid var(--accent); padding:20px; border-radius:20px; width:220px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        .settings-menu { display:none; position:absolute; right:0; top:55px; background: #0f172a; border: 1px solid var(--accent); padding:20px; border-radius:20px; width:220px; }
         .settings-menu.active { display:block; }
-        .settings-menu label { display:flex; align-items:center; justify-content:space-between; margin: 15px 0; font-size: 0.8rem; cursor:pointer; }
+        .settings-menu label { display:flex; align-items:center; justify-content:space-between; margin: 12px 0; font-size: 0.8rem; cursor:pointer; }
 
-        /* TAKVİM */
         #months { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
         .month { font-size: 0.6rem; padding: 6px; background: rgba(255,255,255,0.05); border-radius: 6px; cursor: pointer; text-align: center; }
         .month.active { background: var(--accent); color: #000; font-weight: 700; }
@@ -247,12 +246,11 @@
         .day.selected { background: var(--accent); color: #000; font-weight: 700; }
         .day-emoji { position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; }
 
-        /* GENEL */
         h2 { font-size: 0.8rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
         .item-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 14px; margin-bottom: 8px; font-size: 0.85rem; }
         input, textarea { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 14px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
         button { background: var(--accent); color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-        .del-btn { background: transparent; color: #ef4444; font-size: 1.2rem; border: none; }
+        .del-btn { background: transparent; color: #ef4444; font-size: 1.2rem; border: none; cursor: pointer; }
         .done { text-decoration: line-through; opacity: 0.4; }
         .weather-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.75rem; }
 
@@ -276,9 +274,9 @@
 <div class="settings-drawer">
     <button class="settings-btn" onclick="toggleSettingsMenu(event)"><i data-lucide="settings"></i></button>
     <div class="settings-menu" id="settingsMenu">
-        <b style="font-size:0.7rem; color:var(--accent)">MODÜL AYARLARI</b>
+        <b style="font-size:0.7rem; color:var(--accent)">MODÜLLER</b>
         <label>Hava Durumu <input type="checkbox" id="chk_mod_weather" onchange="updateModuleView('mod_weather', this.checked)"></label>
-        <label>Pomodoro <input type="checkbox" id="chk_mod_pomodoro" onchange="updateModuleView('mod_pomodoro', this.checked)"></label>
+        <label>Alarmlar <input type="checkbox" id="chk_mod_alerts" onchange="updateModuleView('mod_alerts', this.checked)"></label>
         <label>Borsa <input type="checkbox" id="chk_mod_stocks" onchange="updateModuleView('mod_stocks', this.checked)"></label>
         <label>Finans <input type="checkbox" id="chk_mod_finance" onchange="updateModuleView('mod_finance', this.checked)"></label>
         <label>Görevler <input type="checkbox" id="chk_mod_tasks" onchange="updateModuleView('mod_tasks', this.checked)"></label>
@@ -290,7 +288,12 @@
     <div style="display:flex; flex-direction:column; gap:20px">
         <div class="panel">
             <h1 id="greeting" style="margin:0; font-size:1.4rem">Selam!</h1>
-            <input id="userNameInput" onchange="saveName()" placeholder="Adını değiştir..." style="margin-top:10px; font-size:0.8rem">
+            <input id="userNameInput" onchange="saveName()" placeholder="Adın..." style="margin-top:10px; font-size:0.8rem">
+        </div>
+        <div class="panel" id="mod_tasks">
+            <h2><i data-lucide="check-square"></i> Yapılacaklar</h2>
+            <div id="taskList" style="max-height:200px; overflow-y:auto"></div>
+            <div style="display:flex; gap:5px; margin-top:10px"><input id="taskInput" placeholder="Yeni..." style="margin:0"><button onclick="addTask()">+</button></div>
         </div>
         <div class="panel" id="mod_weather">
             <h2><i data-lucide="cloud"></i> <span id="cityName">Şehir</span></h2>
@@ -300,63 +303,39 @@
             </div>
             <div id="hourlyForecast"></div>
         </div>
-        <div class="panel" id="mod_tasks">
-            <h2><i data-lucide="check-square"></i> Yapılacaklar</h2>
-            <div id="taskList" style="max-height:200px; overflow-y:auto"></div>
-            <div style="display:flex; gap:5px; margin-top:10px">
-                <input id="taskInput" placeholder="Yeni görev..." style="margin:0">
-                <button onclick="addTask()">+</button>
-            </div>
-        </div>
-        <div class="panel" id="mod_pomodoro">
-            <h2><i data-lucide="timer"></i> Odaklanma</h2>
-            <div style="text-align:center">
-                <div id="timerDisplay" style="font-size:2.5rem; font-weight:800; margin-bottom:10px">25:00</div>
-                <button id="timerBtn" onclick="toggleTimer()">Başlat</button>
-                <button onclick="resetTimer()" style="background:rgba(255,255,255,0.1); color:#fff; margin-left:5px">Sıfırla</button>
-            </div>
-        </div>
     </div>
 
     <div class="panel" id="mod_calendar">
-        <h2><i data-lucide="calendar"></i> Takvim & Günlük Notlar</h2>
+        <h2><i data-lucide="calendar"></i> Takvim</h2>
         <div id="months"></div>
         <h3 id="monthTitle" style="text-align:center; font-size:1rem; margin:15px 0"></h3>
-        <div style="display:grid; grid-template-columns: repeat(7, 1fr); text-align:center; font-size:0.65rem; opacity:0.5; margin-bottom:10px; font-weight:700">
-            <span>PT</span><span>SA</span><span>ÇA</span><span>PE</span><span>CU</span><span>CT</span><span>PZ</span>
-        </div>
+        <div style="display:grid; grid-template-columns: repeat(7, 1fr); text-align:center; font-size:0.65rem; opacity:0.5; margin-bottom:10px; font-weight:700"><span>PT</span><span>SA</span><span>ÇA</span><span>PE</span><span>CU</span><span>CT</span><span>PZ</span></div>
         <div id="days"></div>
         <div style="margin-top:25px; background:rgba(255,255,255,0.03); padding:20px; border-radius:24px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-                <span id="selectedDateText" style="font-weight:700">Gün Seçin</span>
-                <div>
-                    <button onclick="setEmoji('✅')" style="background:none">✅</button>
-                    <button onclick="setEmoji('🚀')" style="background:none">🚀</button>
-                    <button onclick="setEmoji('💰')" style="background:none">💰</button>
-                    <button onclick="setEmoji('')" style="background:none; font-size:0.7rem; opacity:0.5">✕</button>
-                </div>
-            </div>
-            <textarea id="note" placeholder="Notun..." style="height:100px"></textarea>
-            <button onclick="saveNote()" style="width:100%; margin-top:10px">Buluta Kaydet</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px"><span id="selectedDateText">Gün Seçin</span><div><button onclick="setEmoji('✅')" style="background:none">✅</button><button onclick="setEmoji('🚀')" style="background:none">🚀</button><button onclick="setEmoji('')" style="background:none; font-size:0.7rem; opacity:0.5">✕</button></div></div>
+            <textarea id="note" placeholder="Notun..." style="height:100px"></textarea><button onclick="saveNote()" style="width:100%; margin-top:10px">Kaydet</button>
         </div>
     </div>
 
     <div style="display:flex; flex-direction:column; gap:20px">
+        <div class="panel" id="mod_alerts">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                <h2 style="margin:0"><i data-lucide="bell"></i> Alarmlar</h2>
+                <button onclick="clearAlerts()" style="font-size:0.6rem; padding:5px 10px; background:rgba(255,255,255,0.1); color:#fff">Temizle</button>
+            </div>
+            <div id="alertList" style="max-height:200px; overflow-y:auto"></div>
+        </div>
+
         <div class="panel" id="mod_stocks">
             <h2><i data-lucide="trending-up"></i> Borsa Notlarım</h2>
-            <div id="stockList" style="max-height:300px; overflow-y:auto"></div>
-            <input id="stockSymbol" placeholder="Hisse Kodu (ISBTR)">
-            <textarea id="stockNote" placeholder="Destek, direnç, hedef..." style="height:60px"></textarea>
-            <button onclick="addStock()" style="width:100%">Portföye Ekle</button>
+            <div id="stockList" style="max-height:200px; overflow-y:auto"></div>
+            <input id="stockSymbol" placeholder="Hisse (ISBTR)"><textarea id="stockNote" placeholder="Notun..." style="height:60px"></textarea><button onclick="addStock()" style="width:100%">Ekle</button>
         </div>
         <div class="panel" id="mod_finance">
             <h2><i data-lucide="wallet"></i> Nakit Akışı</h2>
-            <div id="finances" style="max-height:200px; overflow-y:auto"></div>
+            <div id="finances" style="max-height:150px; overflow-y:auto"></div>
             <div id="totalFinance" style="text-align:right; font-weight:800; color:var(--accent); font-size:1.1rem; margin-top:10px">0 TL</div>
-            <div style="display:flex; gap:8px; margin-top:10px">
-                <input id="financeInput" placeholder="Yemek 150" style="margin:0">
-                <button onclick="addFinance()">+</button>
-            </div>
+            <div style="display:flex; gap:8px; margin-top:10px"><input id="financeInput" placeholder="Yemek 150" style="margin:0"><button onclick="addFinance()">+</button></div>
         </div>
     </div>
 </div>
