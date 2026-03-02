@@ -2,106 +2,103 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Kişisel Dashboard</title>
+<title>Dashboard</title>
 
 <style>
 
 body{
   margin:0;
-  font-family: Arial;
+  font-family:Arial;
   background:#0f172a;
   color:#e5e7eb;
 }
 
 #app{
   display:grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns:2fr 1fr 2fr;
   height:100vh;
   gap:10px;
   padding:10px;
 }
 
-/* Kutular */
-
 .panel{
   background:#020617;
-  border-radius:10px;
+  border-radius:8px;
   padding:10px;
   overflow:auto;
 }
 
-/* Başlık */
-
 h2{
-  margin:5px 0;
   border-bottom:1px solid #1e293b;
-  padding-bottom:5px;
 }
 
 /* Takvim */
 
 #months{
   display:grid;
-  grid-template-columns: repeat(4,1fr);
+  grid-template-columns:repeat(4,1fr);
   gap:5px;
 }
 
 .month{
-  background:#020617;
-  padding:10px;
-  text-align:center;
   border:1px solid #1e293b;
+  padding:6px;
+  text-align:center;
   cursor:pointer;
 }
 
-.month:hover{
-  background:#1e293b;
+.month:hover{background:#1e293b}
+
+#weekdays,#days{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  text-align:center;
 }
 
-#days{
-  display:grid;
-  grid-template-columns: repeat(7,1fr);
-  gap:5px;
-}
+#days{gap:4px}
 
 .day{
   border:1px solid #1e293b;
-  height:60px;
-  text-align:center;
+  height:50px;
   cursor:pointer;
   position:relative;
+  font-size:13px;
 }
 
-.dot{
-  width:6px;
-  height:6px;
-  background:#22c55e;
-  border-radius:50%;
+.icon{
   position:absolute;
-  bottom:5px;
-  right:5px;
+  bottom:2px;
+  right:2px;
 }
 
-/* Not */
+/* Input */
 
-textarea{
+textarea,input{
   width:100%;
-  height:100px;
   background:#020617;
   color:white;
   border:1px solid #1e293b;
+  margin:4px 0;
 }
 
-/* Görev */
+/* Button */
 
-#taskInput{
-  width:80%;
+button{
+  background:#2563eb;
+  border:none;
+  color:white;
+  padding:4px 8px;
+  cursor:pointer;
 }
+
+button:hover{background:#1d4ed8}
+
+/* Task */
 
 .task{
   display:flex;
   justify-content:space-between;
-  margin:5px 0;
+  margin:4px 0;
 }
 
 .done{
@@ -109,18 +106,22 @@ textarea{
   color:#64748b;
 }
 
-/* Buton */
+/* Finance */
 
-button{
-  background:#2563eb;
-  color:white;
-  border:none;
-  padding:5px 10px;
-  cursor:pointer;
+table{
+  width:100%;
+  border-collapse:collapse;
 }
 
-button:hover{
-  background:#1d4ed8;
+td,th{
+  border:1px solid #1e293b;
+  padding:4px;
+  font-size:12px;
+}
+
+.finance-done{
+  text-decoration:line-through;
+  color:#64748b;
 }
 
 </style>
@@ -139,33 +140,56 @@ button:hover{
 
 <h3 id="monthTitle"></h3>
 
+<div id="weekdays">
+<div>Pzt</div><div>Sal</div><div>Çar</div>
+<div>Per</div><div>Cum</div><div>Cts</div><div>Paz</div>
+</div>
+
 <div id="days"></div>
 
-<h3>Not</h3>
-<textarea id="note"></textarea>
-<button onclick="saveNote()">Kaydet</button>
+<select id="iconSelect">
+<option>📌</option>
+<option>💼</option>
+<option>💰</option>
+<option>❤️</option>
+<option>⚠️</option>
+</select>
+
+<textarea id="note" rows="3"></textarea>
+
+<button id="saveNoteBtn">Kaydet</button>
 
 </div>
 
-<!-- GÖREV -->
+<!-- TASK -->
 <div class="panel">
 
 <h2>✅ Görevler</h2>
 
-<input id="taskInput" placeholder="Yeni görev">
-<button onclick="addTask()">+</button>
+<input id="taskInput">
+<button id="addTaskBtn">+</button>
 
 <div id="tasks"></div>
 
 </div>
 
-<!-- FİNANS -->
+<!-- FINANCE -->
 <div class="panel">
 
-<h2>💰 Finans Notları</h2>
+<h2>💰 Finans</h2>
 
-<textarea id="finance"></textarea>
-<button onclick="saveFinance()">Kaydet</button>
+<button id="addFinanceBtn">+ Satır</button>
+
+<table>
+<thead>
+<tr>
+<th>1</th><th>2</th><th>3</th><th>4</th><th>✔</th><th>❌</th>
+</tr>
+</thead>
+
+<tbody id="financeBody"></tbody>
+
+</table>
 
 </div>
 
@@ -174,98 +198,147 @@ button:hover{
 
 <script>
 
-// Tarih
+// ================= GLOBAL =================
 
-let currentYear = new Date().getFullYear()
-let currentMonth = null
-let selectedDay = null
+const year=new Date().getFullYear()
 
-const months = [
+let currentMonth=null
+let currentDay=null
+
+
+// ================= TAKVİM =================
+
+const months=[
 "Ocak","Şubat","Mart","Nisan","Mayıs","Haziran",
 "Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"
 ]
 
-// AY GÖSTER
-
-const monthsDiv = document.getElementById("months")
+const monthsDiv=document.getElementById("months")
+const daysDiv=document.getElementById("days")
+const monthTitle=document.getElementById("monthTitle")
+const note=document.getElementById("note")
+const iconSelect=document.getElementById("iconSelect")
 
 months.forEach((m,i)=>{
-  const div=document.createElement("div")
-  div.className="month"
-  div.innerText=m
-  div.onclick=()=>openMonth(i)
-  monthsDiv.appendChild(div)
+
+  const d=document.createElement("div")
+  d.className="month"
+  d.innerText=m
+
+  d.onclick=()=>openMonth(i)
+
+  monthsDiv.appendChild(d)
 })
 
-// AY AÇ
+
+// ISO WEEK START (PZT)
+function getMondayStart(year,month){
+
+  let d=new Date(year,month,1)
+
+  let day=d.getDay()
+
+  if(day===0) day=7
+
+  return day-1
+}
+
 
 function openMonth(m){
 
   currentMonth=m
-  document.getElementById("monthTitle").innerText=
-  months[m]+" "+currentYear
+  currentDay=null
 
-  const daysDiv=document.getElementById("days")
+  monthTitle.innerText=months[m]+" "+year
+
   daysDiv.innerHTML=""
 
-  const days=new Date(currentYear,m+1,0).getDate()
+  const start=getMondayStart(year,m)
 
-  for(let i=1;i<=days;i++){
+  const total=new Date(year,m+1,0).getDate()
 
-    const d=document.createElement("div")
-    d.className="day"
-    d.innerText=i
+  for(let i=0;i<start;i++){
+    daysDiv.appendChild(document.createElement("div"))
+  }
 
-    d.onclick=()=>selectDay(i)
+  for(let d=1;d<=total;d++){
 
-    const key=`${currentYear}-${m}-${i}`
+    const el=document.createElement("div")
+    el.className="day"
+    el.innerText=d
 
-    if(localStorage.getItem(key)){
-      const dot=document.createElement("div")
-      dot.className="dot"
-      d.appendChild(dot)
+    el.onclick=()=>selectDay(d)
+
+    const key=`${year}-${m}-${d}`
+    const saved=localStorage.getItem(key)
+
+    if(saved){
+
+      const data=JSON.parse(saved)
+
+      const icon=document.createElement("div")
+      icon.className="icon"
+      icon.innerText=data.icon
+
+      el.appendChild(icon)
     }
 
-    daysDiv.appendChild(d)
+    daysDiv.appendChild(el)
   }
 }
 
-// GÜN SEÇ
 
 function selectDay(d){
 
-  selectedDay=d
+  currentDay=d
 
-  const key=`${currentYear}-${currentMonth}-${d}`
+  const key=`${year}-${currentMonth}-${d}`
 
-  document.getElementById("note").value=
-    localStorage.getItem(key)||""
+  const saved=localStorage.getItem(key)
+
+  if(saved){
+
+    const data=JSON.parse(saved)
+
+    note.value=data.text
+    iconSelect.value=data.icon
+
+  }else{
+
+    note.value=""
+    iconSelect.value="📌"
+  }
 }
 
-// NOT KAYDET
 
-function saveNote(){
+saveNoteBtn.onclick=()=>{
 
-  if(selectedDay==null) return
+  if(currentDay==null) return
 
-  const key=`${currentYear}-${currentMonth}-${selectedDay}`
+  const key=`${year}-${currentMonth}-${currentDay}`
 
-  localStorage.setItem(
-    key,
-    document.getElementById("note").value
-  )
+  const data={
+    text:note.value,
+    icon:iconSelect.value
+  }
+
+  localStorage.setItem(key,JSON.stringify(data))
 
   openMonth(currentMonth)
 }
 
-// GÖREVLER
+
+// ================= TASK =================
+
+const taskInput=document.getElementById("taskInput")
+const tasksDiv=document.getElementById("tasks")
 
 let tasks=JSON.parse(localStorage.getItem("tasks")||"[]")
 
+
 function renderTasks(){
 
-  const div=document.getElementById("tasks")
-  div.innerHTML=""
+  tasksDiv.innerHTML=""
 
   tasks.forEach((t,i)=>{
 
@@ -274,16 +347,20 @@ function renderTasks(){
 
     const span=document.createElement("span")
     span.innerText=t.text
+
     if(t.done) span.classList.add("done")
 
     span.onclick=()=>{
+
       t.done=!t.done
       saveTasks()
     }
 
     const del=document.createElement("button")
     del.innerText="X"
+
     del.onclick=()=>{
+
       tasks.splice(i,1)
       saveTasks()
     }
@@ -291,25 +368,25 @@ function renderTasks(){
     row.appendChild(span)
     row.appendChild(del)
 
-    div.appendChild(row)
+    tasksDiv.appendChild(row)
   })
 }
 
-function addTask(){
 
-  const input=document.getElementById("taskInput")
+addTaskBtn.onclick=()=>{
 
-  if(input.value=="") return
+  if(taskInput.value=="") return
 
   tasks.push({
-    text:input.value,
+    text:taskInput.value,
     done:false
   })
 
-  input.value=""
+  taskInput.value=""
 
   saveTasks()
 }
+
 
 function saveTasks(){
 
@@ -317,22 +394,90 @@ function saveTasks(){
   renderTasks()
 }
 
-// FİNANS
 
-function saveFinance(){
+// ================= FINANCE =================
 
-  localStorage.setItem(
-    "finance",
-    document.getElementById("finance").value
-  )
+const financeBody=document.getElementById("financeBody")
+
+let finance=JSON.parse(localStorage.getItem("finance")||"[]")
+
+
+function renderFinance(){
+
+  financeBody.innerHTML=""
+
+  finance.forEach((r,i)=>{
+
+    const tr=document.createElement("tr")
+
+    for(let c=0;c<4;c++){
+
+      const td=document.createElement("td")
+      td.contentEditable=true
+      td.innerText=r.data[c]||""
+
+      td.onblur=()=>{
+
+        r.data[c]=td.innerText
+        saveFinance(false)
+      }
+
+      if(r.done) td.classList.add("finance-done")
+
+      tr.appendChild(td)
+    }
+
+
+    const ok=document.createElement("td")
+    ok.innerText="✔"
+
+    ok.onclick=()=>{
+
+      r.done=!r.done
+      saveFinance()
+    }
+
+
+    const del=document.createElement("td")
+    del.innerText="X"
+
+    del.onclick=()=>{
+
+      finance.splice(i,1)
+      saveFinance()
+    }
+
+    tr.appendChild(ok)
+    tr.appendChild(del)
+
+    financeBody.appendChild(tr)
+  })
 }
 
-document.getElementById("finance").value=
-  localStorage.getItem("finance")||""
 
-// BAŞLAT
+addFinanceBtn.onclick=()=>{
+
+  finance.push({
+    data:["","","",""],
+    done:false
+  })
+
+  saveFinance()
+}
+
+
+function saveFinance(rerender=true){
+
+  localStorage.setItem("finance",JSON.stringify(finance))
+
+  if(rerender) renderFinance()
+}
+
+
+// ================= START =================
 
 renderTasks()
+renderFinance()
 
 </script>
 
