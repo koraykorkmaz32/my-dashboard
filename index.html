@@ -12,15 +12,16 @@
       import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
       // 1. FIREBASE BİLGİLERİNİ BURAYA YAPIŞTIR
-      const firebaseConfig = {
-        apiKey: "AIza...",
-        authDomain: "projen.firebaseapp.com",
-        databaseURL: "https://projen.firebaseio.com",
-        projectId: "projen",
-        storageBucket: "projen.appspot.com",
-        messagingSenderId: "...",
-        appId: "..."
-      };
+       const firebaseConfig = {
+          apiKey: "AIzaSyDnvY1frFDXMbMspy8a-z_Z41ofSz8wu2k",
+          authDomain: "korkmazdashboard.firebaseapp.com",
+          databaseURL: "https://korkmazdashboard-default-rtdb.europe-west1.firebasedatabase.app",
+          projectId: "korkmazdashboard",
+          storageBucket: "korkmazdashboard.firebasestorage.app",
+          messagingSenderId: "119430771116",
+          appId: "1:119430771116:web:c7d25cfb8f320cbb940a09",
+          measurementId: "G-87JCTF09T7"
+        };
 
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
