@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Dashboard & Stock Terminal</title>
+    <title>Life OS | Modüler Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     
@@ -11,260 +11,187 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-       const firebaseConfig = {
-          apiKey: "AIzaSyDnvY1frFDXMbMspy8a-z_Z41ofSz8wu2k",
-          authDomain: "korkmazdashboard.firebaseapp.com",
-          databaseURL: "https://korkmazdashboard-default-rtdb.europe-west1.firebasedatabase.app",
-          projectId: "korkmazdashboard",
-          storageBucket: "korkmazdashboard.firebasestorage.app",
-          messagingSenderId: "119430771116",
-          appId: "1:119430771116:web:c7d25cfb8f320cbb940a09",
-    
-           measurementId: "G-87JCTF09T7"
-    // MODÜL AYARLARI
-  const defaultModules = {
-    weather: true,
-    pomodoro: true,
-    stocks: true,
-    finance: true,
-    tasks: true,
-    english: true,
-    tradingview: false // İsteğe bağlı ağır modül
-  };
+      // 1. FIREBASE BİLGİLERİNİ BURAYA YAPIŞTIR
+      const firebaseConfig = {
+        apiKey: "AIza...",
+        authDomain: "projen.firebaseapp.com",
+        databaseURL: "https://projen.firebaseio.com",
+        projectId: "projen",
+        storageBucket: "projen.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
+      };
 
-  // Ayarları Firebase'den çek ve uygula
-  onValue(ref(db, 'settings/activeModules'), (snap) => {
-    const activeModules = snap.val() || defaultModules;
-    Object.keys(activeModules).forEach(key => {
-        const el = document.getElementById(`mod-${key}`);
-        if (el) el.style.display = activeModules[key] ? 'block' : 'none';
-        
-        // Ayar panelindeki checkboxları güncelle
-        const chk = document.getElementById(`chk-${key}`);
-        if (chk) chk.checked = activeModules[key];
-    });
-  });
-
-  window.toggleModule = (key) => {
-    const chk = document.getElementById(`chk-${key}`);
-    update(ref(db, 'settings/activeModules'), { [key]: chk.checked });
-  };
-
-  // YENİ: İNGİLİZCE KELİME MODÜLÜ (Basit bir API veya statik liste)
-  const words = [
-    {en: "Volatility", tr: "Oynaklık (Borsa terimi)"},
-    {en: "Consistency", tr: "Tutarlılık"},
-    {en: "Trend Following", tr: "Trend Takibi"}
-  ];
-  const randomWord = words[Math.floor(Math.random() * words.length)];
-  document.getElementById("dailyWord").innerHTML = `<b>${randomWord.en}</b>: ${randomWord.tr}`;
-
-</script>
-
-<style>
-    /* Ayarlar Paneli Stili */
-    .settings-drawer {
-        position: fixed; top: 20px; right: 20px; z-index: 1000;
-    }
-    .settings-content {
-        display: none; background: var(--card); padding: 20px; border-radius: 15px;
-        border: 1px solid var(--accent); margin-top: 10px;
-    }
-    .settings-drawer:hover .settings-content { display: block; }
-    
-    /* Modül başlıklarına özel renkler */
-    #mod-stocks { border-left: 4px solid #facc15; }
-    #mod-english { border-left: 4px solid #a855f7; }
-</style>
-
-<div class="settings-drawer">
-    <button style="border-radius: 50%; width: 50px; height: 50px; padding: 0;">⚙️</button>
-    <div class="settings-content">
-        <h3>Modülleri Yönet</h3>
-        <label><input type="checkbox" id="chk-weather" onchange="toggleModule('weather')"> Hava Durumu</label><br>
-        <label><input type="checkbox" id="chk-pomodoro" onchange="toggleModule('pomodoro')"> Pomodoro</label><br>
-        <label><input type="checkbox" id="chk-stocks" onchange="toggleModule('stocks')"> Borsa Terminali</label><br>
-        <label><input type="checkbox" id="chk-english" onchange="toggleModule('english')"> İngilizce Pratik</label><br>
-        <label><input type="checkbox" id="chk-finance" onchange="toggleModule('finance')"> Nakit Akışı</label>
-    </div>
-</div>
-
-<div id="app">
-    <div class="panel" id="mod-weather"> </div>
-    <div class="panel" id="mod-pomodoro"> </div>
-    <div class="panel" id="mod-english">
-        <h2><i data-lucide="languages"></i> Günün Kelimesi</h2>
-        <div id="dailyWord" class="item-row"></div>
-    </div>
-    </div>
-       };
-
-  
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
-      // --- DEĞİŞKENLER ---
+      // 2. GÜVENLİK VE ÖZEL ODA SİSTEMİ
+      let MY_KEY = localStorage.getItem('dash_key');
+      if (!MY_KEY) {
+          MY_KEY = prompt("Dashboard için GİZLİ ANAHTAR belirle (Verilerini botlardan korur):", "sef43");
+          localStorage.setItem('dash_key', MY_KEY);
+      }
+      const userPath = `users/${MY_KEY}/`;
+
+      // --- GLOBAL DEĞİŞKENLER ---
       let currentYear = new Date().getFullYear();
       let currentMonth = new Date().getMonth();
       let selectedDay = null;
       let selectedEmoji = "";
       const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 
-      // --- KİŞİSELLEŞTİRME & HAVA DURUMU ---
-      window.saveName = () => {
-        const name = document.getElementById("userNameInput").value;
-        set(ref(db, 'settings/userName'), name);
+      // --- MODÜL TOGGLE SİSTEMİ ---
+      window.toggleModule = (modId) => {
+          const el = document.getElementById(modId);
+          const isVisible = !el.classList.contains('hidden');
+          update(ref(db, userPath + 'settings/modules'), { [modId]: !isVisible });
       };
 
-      onValue(ref(db, 'settings'), (snap) => {
-        const data = snap.val() || { userName: "Şef", city: "Istanbul", lat: 41.0082, lon: 28.9784 };
-        const hr = new Date().getHours();
-        const greet = hr < 12 ? "Günaydın" : hr < 18 ? "Tünaydın" : "İyi Akşamlar";
-        document.getElementById("greeting").innerText = `${greet}, ${data.userName}! 🚀`;
-        document.getElementById("userNameInput").value = data.userName;
-        updateWeather(data.lat, data.lon, data.city);
+      onValue(ref(db, userPath + 'settings/modules'), (snap) => {
+          const mods = snap.val() || { mod_weather:true, mod_pomodoro:true, mod_calendar:true, mod_stocks:true, mod_finance:true, mod_tasks:true, mod_english:true };
+          Object.keys(mods).forEach(id => {
+              const el = document.getElementById(id);
+              const chk = document.getElementById('chk_' + id);
+              if (el) {
+                  mods[id] ? el.classList.remove('hidden') : el.classList.add('hidden');
+                  if(chk) chk.checked = mods[id];
+              }
+          });
+      });
+
+      // --- KİŞİSELLEŞTİRME & HAVA DURUMU ---
+      window.saveName = () => {
+          set(ref(db, userPath + 'settings/userName'), document.getElementById("userNameInput").value);
+      };
+
+      onValue(ref(db, userPath + 'settings'), (snap) => {
+          const data = snap.val() || { userName: "Şef", city: "Istanbul", lat: 41.0082, lon: 28.9784 };
+          const hr = new Date().getHours();
+          const greet = hr < 12 ? "Günaydın" : hr < 18 ? "Tünaydın" : "İyi Akşamlar";
+          document.getElementById("greeting").innerText = `${greet}, ${data.userName}! 🚀`;
+          document.getElementById("userNameInput").value = data.userName;
+          updateWeather(data.lat, data.lon, data.city);
       });
 
       window.searchCity = async () => {
-        const city = document.getElementById("cityInput").value;
-        if (!city) return;
-        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=tr&format=json`);
-        const data = await res.json();
-        if (data.results) {
-            const loc = data.results[0];
-            update(ref(db, 'settings'), { city: loc.name, lat: loc.latitude, lon: loc.longitude });
-        }
+          const city = document.getElementById("cityInput").value;
+          if (!city) return;
+          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=tr&format=json`);
+          const data = await res.json();
+          if (data.results) {
+              const loc = data.results[0];
+              update(ref(db, userPath + 'settings'), { city: loc.name, lat: loc.latitude, lon: loc.longitude });
+          }
       };
 
       async function updateWeather(lat, lon, city) {
-        document.getElementById("cityName").innerText = city;
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,windspeed_10m&current_weather=true&timezone=auto`);
-        const data = await res.json();
-        
-        document.getElementById("temp").innerText = `${data.current_weather.temperature}°C`;
-        
-        let forecastHTML = "";
-        for(let i=0; i<24; i++) {
-            const time = data.hourly.time[i].split("T")[1];
-            forecastHTML += `
-                <div class="forecast-item">
-                    <span>${time}</span>
-                    <span>${data.hourly.temperature_2m[i]}°</span>
-                    <span style="color:#38bdf8">${data.hourly.precipitation_probability[i]}% 🌧️</span>
-                    <span style="color:#94a3b8">${data.hourly.windspeed_10m[i]}km/h 💨</span>
-                </div>`;
-        }
-        document.getElementById("hourlyForecast").innerHTML = forecastHTML;
+          document.getElementById("cityName").innerText = city;
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,windspeed_10m&current_weather=true&timezone=auto`);
+          const data = await res.json();
+          document.getElementById("temp").innerText = `${data.current_weather.temperature}°C`;
+          let html = "";
+          for(let i=0; i<24; i++) {
+              const time = data.hourly.time[i].split("T")[1];
+              html += `<div class="forecast-item"><span>${time}</span><b>${data.hourly.temperature_2m[i]}°</b><span>%${data.hourly.precipitation_probability[i]} 🌧️</span></div>`;
+          }
+          document.getElementById("hourlyForecast").innerHTML = html;
       }
 
       // --- POMODORO ---
-      let timer;
-      let timeLeft = 25 * 60;
+      let timer; let timeLeft = 25 * 60;
       window.toggleTimer = () => {
-        if (timer) { clearInterval(timer); timer = null; document.getElementById("timerBtn").innerText = "Başlat"; }
-        else {
-            timer = setInterval(() => { timeLeft--; updateTimerDisplay(); if(timeLeft<=0) { clearInterval(timer); alert("Mola!"); }}, 1000);
-            document.getElementById("timerBtn").innerText = "Durdur";
-        }
+          if (timer) { clearInterval(timer); timer = null; document.getElementById("timerBtn").innerText = "Başlat"; }
+          else {
+              timer = setInterval(() => { timeLeft--; updateTimerDisplay(); if(timeLeft<=0){ clearInterval(timer); alert("Süre bitti!"); } }, 1000);
+              document.getElementById("timerBtn").innerText = "Durdur";
+          }
       };
-      window.resetTimer = () => {
-        clearInterval(timer); timer = null;
-        timeLeft = 25 * 60;
-        updateTimerDisplay();
-        document.getElementById("timerBtn").innerText = "Başlat";
-      };
+      window.resetTimer = () => { clearInterval(timer); timer = null; timeLeft = 25 * 60; updateTimerDisplay(); document.getElementById("timerBtn").innerText = "Başlat"; };
       function updateTimerDisplay() {
-        const m = Math.floor(timeLeft / 60); const s = timeLeft % 60;
-        document.getElementById("timerDisplay").innerText = `${m}:${s < 10 ? '0'+s : s}`;
+          const m = Math.floor(timeLeft / 60); const s = timeLeft % 60;
+          document.getElementById("timerDisplay").innerText = `${m}:${s < 10 ? '0'+s : s}`;
       }
 
-      // --- BORSA & HİSSE TAKİP ---
+      // --- BORSA & FİNANS ---
       window.addStock = () => {
-        const symbol = document.getElementById("stockSymbol").value.toUpperCase();
-        const note = document.getElementById("stockNote").value;
-        if(symbol) push(ref(db, 'stocks'), { symbol, note });
-        document.getElementById("stockSymbol").value = "";
-        document.getElementById("stockNote").value = "";
+          const symbol = document.getElementById("stockSymbol").value.toUpperCase();
+          const note = document.getElementById("stockNote").value;
+          if(symbol) push(ref(db, userPath + 'stocks'), { symbol, note });
+          document.getElementById("stockSymbol").value = ""; document.getElementById("stockNote").value = "";
       };
-
-      onValue(ref(db, 'stocks'), (snap) => {
-        const container = document.getElementById("stockList");
-        container.innerHTML = "";
-        const data = snap.val();
-        for (let id in data) {
-            container.innerHTML += `
-                <div class="item-row">
-                    <div style="display:flex; flex-direction:column">
-                        <b style="color:var(--accent)">${data[id].symbol}</b>
-                        <small style="font-size:0.7rem; opacity:0.7">${data[id].note}</small>
-                    </div>
-                    <button class="del-btn" onclick="deleteItem('stocks/${id}')">×</button>
-                </div>`;
-        }
+      onValue(ref(db, userPath + 'stocks'), (snap) => {
+          const container = document.getElementById("stockList"); container.innerHTML = "";
+          const data = snap.val();
+          for (let id in data) {
+              container.innerHTML += `<div class="item-row"><div><b>${data[id].symbol}</b><br><small>${data[id].note}</small></div><button class="del-btn" onclick="deleteItem('stocks/${id}')">×</button></div>`;
+          }
       });
 
-      // --- FİNANS & DİĞER FONKSİYONLAR ---
-      window.deleteItem = (path) => remove(ref(db, path));
       window.addFinance = () => {
-        const input = document.getElementById("financeInput");
-        if (input.value) push(ref(db, 'finances'), { text: input.value });
-        input.value = "";
+          const input = document.getElementById("financeInput");
+          if (input.value) push(ref(db, userPath + 'finances'), { text: input.value });
+          input.value = "";
       };
-      onValue(ref(db, 'finances'), (snap) => {
-        const container = document.getElementById("finances");
-        container.innerHTML = ""; let total = 0;
-        const data = snap.val();
-        for (let id in data) {
-          container.innerHTML += `<div class="item-row"><span>${data[id].text}</span><button class="del-btn" onclick="deleteItem('finances/${id}')">×</button></div>`;
-          const amount = data[id].text.match(/\d+/g);
-          if (amount) total += parseInt(amount[amount.length - 1]);
-        }
-        document.getElementById("totalFinance").innerText = `Toplam: ${total} TL`;
+      onValue(ref(db, userPath + 'finances'), (snap) => {
+          const container = document.getElementById("finances"); container.innerHTML = "";
+          let total = 0; const data = snap.val();
+          for (let id in data) {
+              container.innerHTML += `<div class="item-row"><span>${data[id].text}</span><button class="del-btn" onclick="deleteItem('finances/${id}')">×</button></div>`;
+              const amount = data[id].text.match(/\d+/g);
+              if (amount) total += parseInt(amount[amount.length - 1]);
+          }
+          document.getElementById("totalFinance").innerText = `Toplam: ${total} TL`;
       });
 
-      // --- TAKVİM ---
+      // --- TAKVİM & GÖREVLER ---
       window.openMonth = (m) => {
-        currentMonth = m;
-        document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
-        const daysDiv = document.getElementById("days"); daysDiv.innerHTML = "";
-        const firstDay = new Date(currentYear, m, 1).getDay();
-        const offset = (firstDay === 0) ? 6 : firstDay - 1;
-        for (let i = 0; i < offset; i++) daysDiv.innerHTML += `<div class="day empty"></div>`;
-        for (let i = 1; i <= new Date(currentYear, m + 1, 0).getDate(); i++) {
-          const d = document.createElement("div"); d.className = "day"; d.innerText = i;
-          onValue(ref(db, `calendar/${currentYear}/${m}/${i}`), (snap) => {
-            if (snap.val()?.emoji) { d.innerHTML = `${i}<span class="day-emoji">${snap.val().emoji}</span>`; }
-          });
-          d.onclick = () => selectDay(i, d);
-          daysDiv.appendChild(d);
-        }
+          currentMonth = m;
+          document.getElementById("monthTitle").innerText = months[m] + " " + currentYear;
+          const daysDiv = document.getElementById("days"); daysDiv.innerHTML = "";
+          const firstDay = new Date(currentYear, m, 1).getDay();
+          const offset = (firstDay === 0) ? 6 : firstDay - 1;
+          for (let i = 0; i < offset; i++) daysDiv.innerHTML += `<div class="day empty"></div>`;
+          for (let i = 1; i <= new Date(currentYear, m + 1, 0).getDate(); i++) {
+              const d = document.createElement("div"); d.className = "day"; d.innerText = i;
+              onValue(ref(db, userPath + `calendar/${currentYear}/${m}/${i}`), (snap) => {
+                  if (snap.val()?.emoji) d.innerHTML = `${i}<span class="day-emoji">${snap.val().emoji}</span>`;
+              });
+              d.onclick = () => selectDay(i, d);
+              daysDiv.appendChild(d);
+          }
       };
       window.selectDay = (d, el) => {
-        selectedDay = d; document.querySelectorAll('.day').forEach(x => x.classList.remove('selected')); el.classList.add('selected');
-        onValue(ref(db, `calendar/${currentYear}/${currentMonth}/${d}`), (snap) => {
-            const data = snap.val() || {}; document.getElementById("note").value = data.text || "";
-            selectedEmoji = data.emoji || ""; document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]}`;
-        }, { onlyOnce: true });
+          selectedDay = d; document.querySelectorAll('.day').forEach(x => x.classList.remove('selected')); el.classList.add('selected');
+          onValue(ref(db, userPath + `calendar/${currentYear}/${currentMonth}/${d}`), (snap) => {
+              const data = snap.val() || {}; document.getElementById("note").value = data.text || "";
+              selectedEmoji = data.emoji || ""; document.getElementById("selectedDateText").innerText = `${d} ${months[currentMonth]}`;
+          }, { onlyOnce: true });
       };
-      window.saveNote = () => { if(selectedDay) set(ref(db, `calendar/${currentYear}/${currentMonth}/${selectedDay}`), { text: document.getElementById("note").value, emoji: selectedEmoji }); };
-      window.setEmoji = (e) => { selectedEmoji = e; };
-      
-      // Görevler
-      window.addTask = () => { const input = document.getElementById("taskInput"); if(input.value) push(ref(db, 'tasks'), { text: input.value, done: false }); input.value = ""; };
-      onValue(ref(db, 'tasks'), (snap) => {
-        const container = document.getElementById("tasks"); container.innerHTML = "";
-        const data = snap.val();
-        for (let id in data) {
-          container.innerHTML += `<div class="item-row"><span class="${data[id].done ? 'done' : ''}" onclick="update(ref(db, 'tasks/${id}'), {done: !${data[id].done}})">${data[id].text}</span><button class="del-btn" onclick="deleteItem('tasks/${id}')">×</button></div>`;
-        }
+      window.saveNote = () => { if(selectedDay) set(ref(db, userPath + `calendar/${currentYear}/${currentMonth}/${selectedDay}`), { text: document.getElementById("note").value, emoji: selectedEmoji }); };
+
+      window.addTask = () => { const input = document.getElementById("taskInput"); if(input.value) push(ref(db, userPath + 'tasks'), { text: input.value, done: false }); input.value = ""; };
+      onValue(ref(db, userPath + 'tasks'), (snap) => {
+          const container = document.getElementById("tasks"); container.innerHTML = "";
+          const data = snap.val();
+          for (let id in data) {
+              container.innerHTML += `<div class="item-row"><span class="${data[id].done ? 'done' : ''}" onclick="update(ref(db, '${userPath}tasks/${id}'), {done: !${data[id].done}})">${data[id].text}</span><button class="del-btn" onclick="deleteItem('tasks/${id}')">×</button></div>`;
+          }
       });
 
-      // Başlat
+      // --- YARDIMCI ---
+      window.deleteItem = (p) => remove(ref(db, userPath + p));
+      window.setEmoji = (e) => { selectedEmoji = e; };
+      
+      const words = [{en:"Volatility", tr:"Oynaklık"}, {en:"Liquidity", tr:"Likidite"}, {en:"Equity", tr:"Özsermaye"}];
+      const randWord = words[Math.floor(Math.random() * words.length)];
+      document.getElementById("dailyWord").innerHTML = `<b>${randWord.en}</b>: ${randWord.tr}`;
+
+      // BAŞLAT
       const monthsDiv = document.getElementById("months");
       months.forEach((m, i) => {
-        const div = document.createElement("div"); div.className = "month"; div.innerText = m;
-        div.onclick = () => { document.querySelectorAll('.month').forEach(el => el.classList.remove('active')); div.classList.add('active'); openMonth(i); };
-        monthsDiv.appendChild(div);
+          const div = document.createElement("div"); div.className = "month"; div.innerText = m;
+          div.onclick = () => { document.querySelectorAll('.month').forEach(el => el.classList.remove('active')); div.classList.add('active'); openMonth(i); };
+          monthsDiv.appendChild(div);
       });
       openMonth(currentMonth);
       updateTimerDisplay();
@@ -272,123 +199,152 @@
     </script>
 
     <style>
-        :root { --bg: #020617; --card: rgba(15, 23, 42, 0.8); --accent: #38bdf8; --text: #f8fafc; }
+        :root { --bg: #020617; --card: rgba(15, 23, 42, 0.9); --accent: #38bdf8; --text: #f8fafc; }
         body { 
-            margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; 
-            background-image: radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0, transparent 50%), radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.1) 0, transparent 50%);
-            color: var(--text); min-height: 100vh; padding: 20px;
+            margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text);
+            background-image: radial-gradient(at 0% 0%, rgba(56,189,248,0.1) 0, transparent 40%);
+            min-height: 100vh; padding: 20px; padding-bottom: 80px;
         }
         #app { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 20px; max-width: 1600px; margin: auto; }
         .panel { background: var(--card); backdrop-filter: blur(20px); border-radius: 28px; padding: 24px; border: 1px solid rgba(255,255,255,0.05); }
-        h2 { font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+        .hidden { display: none !important; }
         
-        /* Hava Durumu & Kişiselleştirme */
-        .weather-panel { display: flex; flex-direction: column; gap: 15px; }
-        .forecast-container { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding-right: 5px; }
-        .forecast-item { display: flex; justify-content: space-between; font-size: 0.75rem; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+        /* Modül Kontrol Paneli */
+        .settings-drawer { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .settings-btn { width: 45px; height: 45px; border-radius: 50%; background: var(--accent); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        .settings-menu { display:none; position:absolute; right:0; top:55px; background: var(--card); border: 1px solid var(--accent); padding:15px; border-radius:15px; width:200px; backdrop-filter: blur(10px); }
+        .settings-drawer:hover .settings-menu { display:block; }
+        .settings-menu label { display:block; margin: 10px 0; font-size: 0.8rem; cursor:pointer; }
 
-        /* Pomodoro */
-        .pomodoro { text-align: center; background: rgba(56, 189, 248, 0.05); padding: 15px; border-radius: 20px; margin: 15px 0; }
-        .timer-display { font-size: 2.5rem; font-weight: 800; color: var(--text); }
-
-        /* Takvim */
+        h2 { font-size: 0.9rem; color: var(--accent); text-transform: uppercase; display: flex; align-items: center; gap: 10px; margin-top:0; }
+        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 8px; font-size: 0.85rem; }
+        
+        #days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .day { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; font-size: 0.75rem; position: relative; }
+        .day.selected { background: var(--accent); color: #000; font-weight:bold; }
+        .day-emoji { position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; }
+        
         #months { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 10px; }
         .month { font-size: 0.65rem; padding: 4px; background: rgba(255,255,255,0.05); border-radius: 4px; cursor: pointer; text-align: center; }
         .month.active { background: var(--accent); color: #000; }
-        #days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .day { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; font-size: 0.75rem; position: relative; }
-        .day.selected { background: var(--accent); color: #000; font-weight: bold; }
-        .day-emoji { position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; }
 
-        /* Listeler */
-        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 8px; }
-        input, textarea { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 10px; width: 100%; box-sizing: border-box; }
-        button { background: var(--accent); color: #000; border: none; padding: 10px 15px; border-radius: 10px; font-weight: 700; cursor: pointer; }
-        .del-btn { background: transparent; color: #ff4757; font-size: 1.2rem; }
+        .pomodoro-box { text-align:center; background: rgba(56,189,248,0.05); padding:15px; border-radius:20px; margin: 15px 0; }
+        .timer-display { font-size: 2.2rem; font-weight:800; }
+
+        input, textarea { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 10px; width: 100%; box-sizing: border-box; font-family: inherit; }
+        button { background: var(--accent); color: #000; border: none; padding: 10px 15px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.8; transform: translateY(-2px); }
+        .del-btn { background: transparent; color: #ff4757; font-size: 1.2rem; padding: 0 5px; }
         .done { text-decoration: line-through; opacity: 0.4; }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+        
+        .forecast-container { max-height: 150px; overflow-y: auto; margin-top: 10px; }
+        .forecast-item { display:flex; justify-content: space-between; font-size: 0.7rem; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); }
 
         @media (max-width: 1100px) { #app { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
+<div class="settings-drawer">
+    <button class="settings-btn"><i data-lucide="settings"></i></button>
+    <div class="settings-menu">
+        <b style="font-size:0.7rem; color:var(--accent)">MODÜL YÖNETİMİ</b>
+        <label><input type="checkbox" id="chk_mod_weather" onchange="toggleModule('mod_weather')"> Hava Durumu</label>
+        <label><input type="checkbox" id="chk_mod_pomodoro" onchange="toggleModule('mod_pomodoro')"> Pomodoro</label>
+        <label><input type="checkbox" id="chk_mod_calendar" onchange="toggleModule('mod_calendar')"> Takvim & Notlar</label>
+        <label><input type="checkbox" id="chk_mod_stocks" onchange="toggleModule('mod_stocks')"> Borsa Takip</label>
+        <label><input type="checkbox" id="chk_mod_finance" onchange="toggleModule('mod_finance')"> Nakit Akışı</label>
+        <label><input type="checkbox" id="chk_mod_tasks" onchange="toggleModule('mod_tasks')"> Görev Listesi</label>
+        <label><input type="checkbox" id="chk_mod_english" onchange="toggleModule('mod_english')"> İngilizce Pratik</label>
+    </div>
+</div>
+
 <div id="app">
-    <div class="panel">
-        <div style="margin-bottom: 20px;">
-            <h1 id="greeting" style="margin: 0; font-size: 1.4rem;">Merhaba!</h1>
-            <input id="userNameInput" onchange="saveName()" placeholder="Adını yaz..." style="margin-top:10px; font-size: 0.8rem;">
+    <div style="display:flex; flex-direction:column; gap:20px">
+        <div class="panel">
+            <h1 id="greeting" style="margin:0; font-size:1.3rem">Merhaba!</h1>
+            <input id="userNameInput" onchange="saveName()" placeholder="İsmini değiştir..." style="font-size:0.7rem; margin-top:10px">
         </div>
 
-        <div class="weather-panel">
-            <h2><i data-lucide="map-pin"></i> <span id="cityName">Şehir</span></h2>
-            <div style="display:flex; justify-content: space-between; align-items: center;">
-                <div id="temp" style="font-size: 2rem; font-weight: 800;">--°C</div>
+        <div class="panel" id="mod_weather">
+            <h2><i data-lucide="cloud-sun"></i> <span id="cityName">Şehir</span></h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px">
+                <span id="temp" style="font-size:2rem; font-weight:800">--°C</span>
                 <div style="display:flex; gap:5px">
-                    <input id="cityInput" placeholder="Şehir ara..." style="width:100px">
-                    <button onclick="searchCity()"><i data-lucide="search" size="16"></i></button>
+                    <input id="cityInput" placeholder="Şehir..." style="width:80px">
+                    <button onclick="searchCity()"><i data-lucide="search" size="14"></i></button>
                 </div>
             </div>
             <div id="hourlyForecast" class="forecast-container"></div>
         </div>
 
-        <div class="pomodoro">
-            <div id="timerDisplay" class="timer-display">25:00</div>
-            <div style="display:flex; gap:10px; justify-content: center; margin-top:10px">
-                <button id="timerBtn" onclick="toggleTimer()">Başlat</button>
-                <button onclick="resetTimer()" style="background:rgba(255,255,255,0.1); color:#fff">Sıfırla</button>
+        <div class="panel" id="mod_pomodoro">
+            <h2><i data-lucide="timer"></i> Odaklanma</h2>
+            <div class="pomodoro-box">
+                <div id="timerDisplay" class="timer-display">25:00</div>
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:10px">
+                    <button id="timerBtn" onclick="toggleTimer()">Başlat</button>
+                    <button onclick="resetTimer()" style="background:rgba(255,255,255,0.1); color:#fff">Sıfırla</button>
+                </div>
             </div>
+        </div>
+
+        <div class="panel" id="mod_english">
+            <h2><i data-lucide="languages"></i> Günün Kelimesi</h2>
+            <div id="dailyWord" class="item-row"></div>
         </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="mod_calendar">
         <h2><i data-lucide="calendar"></i> Takvim</h2>
         <div id="months"></div>
-        <h3 id="monthTitle" style="text-align: center; font-size: 0.9rem; margin: 10px 0;"></h3>
-        <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.6rem; opacity: 0.5; margin-bottom: 5px;">
+        <h3 id="monthTitle" style="text-align:center; font-size:0.9rem; margin:10px 0"></h3>
+        <div style="display:grid; grid-template-columns: repeat(7, 1fr); text-align:center; font-size:0.6rem; opacity:0.5; margin-bottom:5px">
             <span>PT</span><span>SA</span><span>ÇA</span><span>PE</span><span>CU</span><span>CT</span><span>PZ</span>
         </div>
         <div id="days"></div>
         
-        <div style="margin-top:20px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 20px;">
-            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:10px">
+        <div style="margin-top:20px; background:rgba(255,255,255,0.03); padding:15px; border-radius:20px">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
                 <span id="selectedDateText" style="font-size:0.8rem">Gün Seçin</span>
-                <div id="emojiBar">
+                <div>
                     <button onclick="setEmoji('✅')" style="background:none">✅</button>
                     <button onclick="setEmoji('🚀')" style="background:none">🚀</button>
                     <button onclick="setEmoji('💰')" style="background:none">💰</button>
                     <button onclick="setEmoji('⚠️')" style="background:none">⚠️</button>
                 </div>
             </div>
-            <textarea id="note" placeholder="Notun..." style="height:60px"></textarea>
-            <button onclick="saveNote()" style="width:100%; margin-top:10px">Kaydet</button>
+            <textarea id="note" placeholder="Günlük notunuz..." style="height:80px"></textarea>
+            <button onclick="saveNote()" style="width:100%; margin-top:10px">Buluta Kaydet</button>
         </div>
     </div>
 
-    <div class="panel">
-        <h2><i data-lucide="trending-up"></i> Borsa Takip (BIST/ISBTR)</h2>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px">
-            <input id="stockSymbol" placeholder="Hisse (Örn: ISBTR)">
-            <textarea id="stockNote" placeholder="Hedef fiyat, RSI/SuperTrend notun..." style="height:50px"></textarea>
-            <button onclick="addStock()">Portföye Ekle</button>
+    <div style="display:flex; flex-direction:column; gap:20px">
+        <div class="panel" id="mod_stocks">
+            <h2><i data-lucide="trending-up"></i> Borsa Takip</h2>
+            <input id="stockSymbol" placeholder="Hisse Kodu (ISBTR)">
+            <textarea id="stockNote" placeholder="Strateji notun..." style="height:50px; margin-top:10px"></textarea>
+            <button onclick="addStock()" style="width:100%; margin-top:10px">Portföye Ekle</button>
+            <div id="stockList" style="margin-top:15px; max-height:150px; overflow-y:auto"></div>
         </div>
-        <div id="stockList" style="max-height: 200px; overflow-y: auto;"></div>
 
-        <h2 style="margin-top:30px"><i data-lucide="wallet"></i> Nakit Akışı</h2>
-        <div style="display:flex; gap:10px; margin-bottom:10px">
-            <input id="financeInput" placeholder="Yemek 150">
-            <button onclick="addFinance()">+</button>
+        <div class="panel" id="mod_finance">
+            <h2><i data-lucide="wallet"></i> Nakit Akışı</h2>
+            <div style="display:flex; gap:5px; margin-bottom:10px">
+                <input id="financeInput" placeholder="Market 150">
+                <button onclick="addFinance()">+</button>
+            </div>
+            <div id="finances" style="max-height:150px; overflow-y:auto"></div>
+            <div id="totalFinance" style="text-align:right; font-weight:bold; color:var(--accent); margin-top:5px">0 TL</div>
         </div>
-        <div id="finances" style="max-height: 150px; overflow-y: auto;"></div>
-        <div id="totalFinance" style="text-align:right; font-weight:bold; color:var(--accent); margin-top:5px">0 TL</div>
 
-        <h2 style="margin-top:30px"><i data-lucide="list-todo"></i> Görevler</h2>
-        <div id="tasks"></div>
-        <div style="display:flex; gap:5px; margin-top:10px">
-            <input id="taskInput" placeholder="Yeni görev...">
-            <button onclick="addTask()">+</button>
+        <div class="panel" id="mod_tasks">
+            <h2><i data-lucide="list-todo"></i> Görevler</h2>
+            <div id="tasks"></div>
+            <div style="display:flex; gap:5px; margin-top:10px">
+                <input id="taskInput" placeholder="Yeni görev...">
+                <button onclick="addTask()">+</button>
+            </div>
         </div>
     </div>
 </div>
