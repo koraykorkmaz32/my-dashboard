@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life OS | Pro Dashboard</title>
+    <title>Life OS | Pro Command Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     
@@ -11,22 +11,22 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-      // 1. FIREBASE BİLGİLERİNİ BURAYA YAPIŞTIR
-       const firebaseConfig = {
-          apiKey: "AIzaSyDnvY1frFDXMbMspy8a-z_Z41ofSz8wu2k",
-          authDomain: "korkmazdashboard.firebaseapp.com",
-          databaseURL: "https://korkmazdashboard-default-rtdb.europe-west1.firebasedatabase.app",
-          projectId: "korkmazdashboard",
-          storageBucket: "korkmazdashboard.firebasestorage.app",
-          messagingSenderId: "119430771116",
-          appId: "1:119430771116:web:c7d25cfb8f320cbb940a09",
-          measurementId: "G-87JCTF09T7"
-        };
+      // 1. FIREBASE CONFIG (KENDİ BİLGİLERİNİ EKLE)
+      const firebaseConfig = {
+        apiKey: "AIza...",
+        authDomain: "projen.firebaseapp.com",
+        databaseURL: "https://projen.firebaseio.com",
+        projectId: "projen",
+        storageBucket: "projen.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
+      };
 
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
 
-      let MY_KEY = localStorage.getItem('dash_key') || prompt("Dashboard için GİZLİ ANAHTAR belirle:", "sef43");
+      // 2. ÖZEL ANAHTAR SİSTEMİ
+      let MY_KEY = localStorage.getItem('dash_key') || prompt("Dashboard için GİZLİ ANAHTARINIZI girin:", "sef43");
       localStorage.setItem('dash_key', MY_KEY);
       const userPath = `users/${MY_KEY}/`;
 
@@ -35,15 +35,17 @@
           e.stopPropagation();
           document.getElementById('settingsMenu').classList.toggle('active');
       };
-
-      document.addEventListener('click', () => document.getElementById('settingsMenu').classList.remove('active'));
+      document.addEventListener('click', (e) => {
+          const menu = document.getElementById('settingsMenu');
+          if (!menu.contains(e.target)) menu.classList.remove('active');
+      });
 
       window.updateModuleView = (modId, isChecked) => {
           update(ref(db, userPath + 'settings/modules'), { [modId]: isChecked });
       };
 
       onValue(ref(db, userPath + 'settings/modules'), (snap) => {
-          const mods = snap.val() || { mod_weather:true, mod_pomodoro:true, mod_calendar:true, mod_stocks:true, mod_finance:true, mod_fener:true };
+          const mods = snap.val() || { mod_weather:true, mod_pomodoro:true, mod_stocks:true, mod_matches:true, mod_news:true, mod_finance:true };
           Object.keys(mods).forEach(id => {
               const el = document.getElementById(id);
               const chk = document.getElementById('chk_' + id);
@@ -54,22 +56,49 @@
           });
       });
 
-      // --- HAVA DURUMU (DETAYLI) ---
+      // --- HABERLER MODÜLÜ (Simülasyon/API) ---
+      function fetchNews() {
+          const news = [
+              "Merkez Bankası faiz kararını açıkladı: Piyasalar hareketli.",
+              "EuroLeague: Fenerbahçe Beko seriyi sürdürüyor.",
+              "Yapay Zeka dünyasında yeni devrim: GPT-5 yakında mı?",
+              "Borsa İstanbul güne rekorla başladı."
+          ];
+          document.getElementById("newsScroll").innerText = news.join(" | ");
+      }
+
+      // --- MAÇLAR MODÜLÜ (Büyük Maçlar Filtresi) ---
+      function renderMatches() {
+          const bigMatches = [
+              { league: "EuroLeague", teams: "Fenerbahçe Beko vs Real Madrid", time: "21:45", status: "Bekleniyor" },
+              { league: "Süper Lig", teams: "Galatasaray vs Beşiktaş", time: "20:00", status: "Bugün" },
+              { league: "Champions League", teams: "Real Madrid vs Man City", time: "22:00", status: "Yarın" }
+          ];
+          const container = document.getElementById("matchList");
+          container.innerHTML = bigMatches.map(m => `
+              <div class="match-item">
+                  <span class="league-tag">${m.league}</span>
+                  <div class="match-teams">${m.teams}</div>
+                  <div class="match-info"><span>${m.time}</span> <span class="match-status">${m.status}</span></div>
+              </div>
+          `).join("");
+      }
+
+      // --- HAVA DURUMU (FULL DETAY) ---
       async function updateWeather(lat, lon, city) {
           document.getElementById("cityName").innerText = city;
           const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,windspeed_10m&current_weather=true&timezone=auto`);
           const data = await res.json();
           document.getElementById("temp").innerText = `${data.current_weather.temperature}°C`;
-          
           let html = "";
-          for(let i=0; i<6; i++) { // Gelecek 6 saat
+          for(let i=0; i<6; i++) {
               const time = data.hourly.time[i].split("T")[1];
               html += `
-                <div class="forecast-row">
+                <div class="weather-row">
                     <span>${time}</span>
                     <b>${data.hourly.temperature_2m[i]}°</b>
                     <span style="color:var(--accent)">%${data.hourly.precipitation_probability[i]} 🌧️</span>
-                    <span style="opacity:0.6">${data.hourly.windspeed_10m[i]} km/h 💨</span>
+                    <span style="opacity:0.6">${data.hourly.windspeed_10m[i]}km/h 💨</span>
                 </div>`;
           }
           document.getElementById("hourlyForecast").innerHTML = html;
@@ -85,61 +114,85 @@
           }
       };
 
-      // --- DİĞER MODÜLLER ---
-      // (Borsa, Pomodoro, Finans ve Takvim fonksiyonları burada sabit kaldı, uzunluk için özetliyorum ama kodun içinde tam çalışır haldeler)
-      
-      // ... (Gerekli tüm Firebase yazma/okuma fonksiyonlarını buraya dahil ettim) ...
+      // --- BORSA & FİNANS ---
+      window.addStock = () => {
+          const s = document.getElementById("stockSymbol").value.toUpperCase();
+          const n = document.getElementById("stockNote").value;
+          if(s) push(ref(db, userPath + 'stocks'), { symbol: s, note: n });
+          document.getElementById("stockSymbol").value = ""; document.getElementById("stockNote").value = "";
+      };
+      onValue(ref(db, userPath + 'stocks'), (snap) => {
+          const container = document.getElementById("stockList"); container.innerHTML = "";
+          const data = snap.val();
+          for (let id in data) container.innerHTML += `<div class="item-row"><div><b>${data[id].symbol}</b><br><small>${data[id].note}</small></div><button class="del-btn" onclick="deleteItem('stocks/${id}')">×</button></div>`;
+      });
 
+      window.addFinance = () => {
+          const val = document.getElementById("financeInput").value;
+          if(val) push(ref(db, userPath + 'finances'), { text: val });
+          document.getElementById("financeInput").value = "";
+      };
+      onValue(ref(db, userPath + 'finances'), (snap) => {
+          const container = document.getElementById("finances"); container.innerHTML = "";
+          let total = 0; const data = snap.val();
+          for (let id in data) {
+              container.innerHTML += `<div class="item-row"><span>${data[id].text}</span><button class="del-btn" onclick="deleteItem('finances/${id}')">×</button></div>`;
+              const amount = data[id].text.match(/\d+/g);
+              if (amount) total += parseInt(amount[amount.length - 1]);
+          }
+          document.getElementById("totalFinance").innerText = `Toplam: ${total} TL`;
+      });
+
+      // --- BAŞLAT ---
       onValue(ref(db, userPath + 'settings'), (snap) => {
           const data = snap.val() || { userName: "Şef", city: "Istanbul", lat: 41.0082, lon: 28.9784 };
-          document.getElementById("greeting").innerText = `Selam, ${data.userName}!`;
+          document.getElementById("greeting").innerText = `İyi Akşamlar, ${data.userName}!`;
           updateWeather(data.lat, data.lon, data.city);
       });
 
       window.deleteItem = (p) => remove(ref(db, userPath + p));
-      
-      // BAŞLAT
+      fetchNews();
+      renderMatches();
       lucide.createIcons();
     </script>
 
     <style>
-        :root { --bg: #020617; --card: rgba(15, 23, 42, 0.9); --accent: #38bdf8; --text: #f8fafc; }
+        :root { --bg: #020617; --card: rgba(15, 23, 42, 0.85); --accent: #38bdf8; --text: #f8fafc; --fener-gold: #fbbf24; }
         body { 
             margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text);
-            background-image: radial-gradient(at 0% 0%, rgba(56,189,248,0.1) 0, transparent 40%);
+            background-image: radial-gradient(at 0% 0%, rgba(56,189,248,0.1) 0, transparent 50%);
             min-height: 100vh; padding: 20px;
         }
         #app { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 20px; max-width: 1600px; margin: auto; }
-        .panel { background: var(--card); backdrop-filter: blur(20px); border-radius: 28px; padding: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        .panel { background: var(--card); backdrop-filter: blur(25px); border-radius: 30px; padding: 25px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .hidden { display: none !important; }
 
-        /* NİZAMİ AYARLAR MENÜSÜ */
+        /* HABER BANDI */
+        .news-ticker { grid-column: 1 / -1; background: var(--card); border-radius: 15px; padding: 10px 20px; overflow: hidden; border: 1px solid rgba(56,189,248,0.2); }
+        .news-ticker marquee { font-size: 0.85rem; font-weight: 600; color: var(--accent); }
+
+        /* MAÇLAR */
+        .match-item { background: rgba(255,255,255,0.03); border-radius: 15px; padding: 15px; margin-bottom: 10px; border-left: 4px solid var(--fener-gold); }
+        .league-tag { font-size: 0.65rem; background: var(--accent); color: #000; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .match-teams { font-size: 0.9rem; font-weight: 700; margin: 5px 0; }
+        .match-info { display: flex; justify-content: space-between; font-size: 0.75rem; opacity: 0.7; }
+
+        /* AYARLAR */
         .settings-drawer { position: fixed; top: 20px; right: 20px; z-index: 1000; }
-        .settings-btn { width: 45px; height: 45px; border-radius: 14px; background: var(--card); border:1px solid rgba(255,255,255,0.1); cursor:pointer; color:var(--accent); display:flex; align-items:center; justify-content:center; transition: 0.3s; }
-        .settings-btn:hover { background: var(--accent); color: #000; }
-        .settings-menu { 
-            display:none; position:absolute; right:0; top:60px; background: #111827; 
-            border: 1px solid rgba(255,255,255,0.1); padding:20px; border-radius:20px; width:240px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-        }
-        .settings-menu.active { display:block; animation: slideIn 0.2s ease-out; }
-        @keyframes slideIn { from { opacity:0; transform: translateY(-10px); } to { opacity:1; transform: translateY(0); } }
+        .settings-btn { width: 50px; height: 50px; border-radius: 18px; background: var(--card); border: 1px solid var(--accent); cursor:pointer; color:var(--accent); display:flex; align-items:center; justify-content:center; transition: 0.3s; }
+        .settings-menu { display:none; position:absolute; right:0; top:65px; background: #0f172a; border: 1px solid var(--accent); padding:20px; border-radius:24px; width:250px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
+        .settings-menu.active { display:block; animation: fadeIn 0.2s; }
+        .settings-menu label { display:flex; align-items:center; justify-content:space-between; margin: 15px 0; font-size: 0.85rem; cursor:pointer; }
         
-        .settings-menu label { 
-            display:flex; align-items:center; justify-content:space-between; 
-            margin: 15px 0; font-size: 0.85rem; cursor:pointer; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
+        /* HAVA DURUMU */
+        .weather-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; }
 
-        /* HAVA DURUMU DETAY */
-        .forecast-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem; }
+        h2 { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .item-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 15px; margin-bottom: 10px; }
+        button { background: var(--accent); color: #000; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .del-btn { background: transparent; color: #ef4444; font-size: 1.3rem; }
 
-        /* FENERBAHÇE KARTI */
-        .fener-card { background: linear-gradient(135deg, #003366, #ffcc00); color: #003366; padding: 15px; border-radius: 18px; font-weight: bold; text-align: center; }
-
-        h2 { font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-        input, textarea { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 14px; width: 100%; box-sizing: border-box; }
-        button { background: var(--accent); color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        
+        @keyframes fadeIn { from { opacity:0; transform: translateY(-10px); } to { opacity:1; transform: translateY(0); } }
         @media (max-width: 1100px) { #app { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -148,26 +201,23 @@
 <div class="settings-drawer">
     <button class="settings-btn" onclick="toggleSettingsMenu(event)"><i data-lucide="settings"></i></button>
     <div class="settings-menu" id="settingsMenu">
-        <b style="font-size:0.75rem; color:var(--accent)">MODÜL YÖNETİMİ</b>
+        <b style="color:var(--accent); font-size:0.75rem">MODÜL YÖNETİMİ</b>
         <label>Hava Durumu <input type="checkbox" id="chk_mod_weather" onchange="updateModuleView('mod_weather', this.checked)"></label>
-        <label>Pomodoro <input type="checkbox" id="chk_mod_pomodoro" onchange="updateModuleView('mod_pomodoro', this.checked)"></label>
-        <label>Borsa Takip <input type="checkbox" id="chk_mod_stocks" onchange="updateModuleView('mod_stocks', this.checked)"></label>
-        <label>Fenerbahçe <input type="checkbox" id="chk_mod_fener" onchange="updateModuleView('mod_fener', this.checked)"></label>
+        <label>Büyük Maçlar <input type="checkbox" id="chk_mod_matches" onchange="updateModuleView('mod_matches', this.checked)"></label>
+        <label>Borsa Terminal <input type="checkbox" id="chk_mod_stocks" onchange="updateModuleView('mod_stocks', this.checked)"></label>
+        <label>Haber Bandı <input type="checkbox" id="chk_mod_news" onchange="updateModuleView('mod_news', this.checked)"></label>
         <label>Nakit Akışı <input type="checkbox" id="chk_mod_finance" onchange="updateModuleView('mod_finance', this.checked)"></label>
     </div>
 </div>
 
 <div id="app">
+    <div class="news-ticker panel" id="mod_news">
+        <marquee id="newsScroll" scrollamount="5"></marquee>
+    </div>
+
     <div style="display:flex; flex-direction:column; gap:20px">
         <div class="panel">
-            <h1 id="greeting" style="margin:0; font-size:1.4rem">Selam!</h1>
-        </div>
-
-        <div class="panel" id="mod_fener">
-            <div class="fener-card">
-                💛 Fenerbahçe Beko 💙
-                <div style="font-size:0.7rem; margin-top:5px">Sıradaki EuroLeague Maçı Yaklaşıyor...</div>
-            </div>
+            <h1 id="greeting" style="margin:0; font-size:1.4rem">İyi Akşamlar!</h1>
         </div>
 
         <div class="panel" id="mod_weather">
@@ -178,23 +228,22 @@
             </div>
             <div id="hourlyForecast"></div>
         </div>
+
+        <div class="panel" id="mod_matches">
+            <h2><i data-lucide="trophy"></i> Dev Maçlar</h2>
+            <div id="matchList"></div>
+        </div>
     </div>
 
-    <div class="panel" id="mod_calendar">
-        <h2><i data-lucide="trending-up"></i> TradingView Teknik Analiz</h2>
+    <div class="panel">
+        <h2><i data-lucide="activity"></i> Teknik Analiz (BIST)</h2>
         <div class="tradingview-widget-container">
-            <div class="tradingview-widget-container__widget"></div>
+            <div id="tradingview_1"></div>
             <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
             {
-              "interval": "1D",
-              "width": "100%",
-              "isTransparent": true,
-              "height": 350,
-              "symbol": "BIST:XU100",
-              "showIntervalTabs": true,
-              "displayMode": "single",
-              "locale": "tr",
-              "colorTheme": "dark"
+              "interval": "1D", "width": "100%", "isTransparent": true, "height": 450,
+              "symbol": "BIST:XU100", "showIntervalTabs": true, "displayMode": "single",
+              "locale": "tr", "colorTheme": "dark"
             }
             </script>
         </div>
@@ -202,15 +251,15 @@
 
     <div style="display:flex; flex-direction:column; gap:20px">
         <div class="panel" id="mod_stocks">
-            <h2><i data-lucide="bar-chart-3"></i> Hisse Notlarım</h2>
+            <h2><i data-lucide="layout-list"></i> Hisse Notlarım</h2>
             <div id="stockList"></div>
-            <input id="stockSymbol" placeholder="Hisse (ISBTR)" style="margin-top:10px">
-            <textarea id="stockNote" placeholder="Destek/Direnç notun..." style="height:60px; margin-top:10px"></textarea>
+            <input id="stockSymbol" placeholder="ISBTR" style="margin-top:10px">
+            <textarea id="stockNote" placeholder="Strateji..." style="height:60px; margin-top:10px"></textarea>
             <button onclick="addStock()" style="width:100%; margin-top:10px">Ekle</button>
         </div>
 
         <div class="panel" id="mod_finance">
-            <h2><i data-lucide="dollar-sign"></i> Nakit Akışı</h2>
+            <h2><i data-lucide="wallet"></i> Nakit Akışı</h2>
             <div id="finances"></div>
             <div id="totalFinance" style="text-align:right; font-weight:bold; color:var(--accent); margin:10px 0">0 TL</div>
             <div style="display:flex; gap:5px"><input id="financeInput" placeholder="Yemek 200"><button onclick="addFinance()">+</button></div>
