@@ -300,14 +300,7 @@
             </div>
             <div id="hourlyForecast"></div>
         </div>
-        <div class="panel" id="mod_tasks">
-            <h2><i data-lucide="check-square"></i> Yapılacaklar</h2>
-            <div id="taskList" style="max-height:200px; overflow-y:auto"></div>
-            <div style="display:flex; gap:5px; margin-top:10px">
-                <input id="taskInput" placeholder="Yeni görev..." style="margin:0">
-                <button onclick="addTask()">+</button>
-            </div>
-        </div>
+       
         <div class="panel" id="mod_pomodoro">
             <h2><i data-lucide="timer"></i> Odaklanma</h2>
             <div style="text-align:center">
@@ -348,6 +341,14 @@
             <input id="stockSymbol" placeholder="Hisse Kodu (ISBTR)">
             <textarea id="stockNote" placeholder="Destek, direnç, hedef..." style="height:60px"></textarea>
             <button onclick="addStock()" style="width:100%">Portföye Ekle</button>
+        </div>
+         <div class="panel" id="mod_tasks">
+            <h2><i data-lucide="check-square"></i> Yapılacaklar</h2>
+            <div id="taskList" style="max-height:200px; overflow-y:auto"></div>
+            <div style="display:flex; gap:5px; margin-top:10px">
+                <input id="taskInput" placeholder="Yeni görev..." style="margin:0">
+                <button onclick="addTask()">+</button>
+            </div>
         </div>
         <div class="panel" id="mod_finance">
             <h2><i data-lucide="wallet"></i> Nakit Akışı</h2>
